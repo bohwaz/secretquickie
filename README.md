@@ -17,7 +17,7 @@ This is similar to what [One Time Secret.com](https://github.com/onetimesecret/o
 * If the client has disabled javascript, encryption/decryption will happen on server side (fallback)
 * Uses APCu for memory storage
 * Uses php-libsodium and libsodium.js for cryptography
-* Uses SubResource Integrity (SRI) to load javascript resources, adding extra security to client-side encryption
+* Uses [SubResource Integrity (SRI)](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) to load javascript resources, adding extra security to client-side encryption, see for details.
 
 ## Requirements
 

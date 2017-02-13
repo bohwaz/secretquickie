@@ -5,6 +5,7 @@ namespace SecretQuickie;
 use KD2\Smartyer;
 use KD2\ErrorManager;
 use KD2\Security;
+use KD2\CacheCookie;
 
 /**
  * Loads the list of definitions of javascript hashes for Subresource Integrity
@@ -105,4 +106,8 @@ $tpl->assign('is_logged', false);
 
 // Set secret
 
-Security::tokenSetSecret(sha1_file(__DIR__ . '/../.env'));
+Security::tokenSetSecret(APP_SECRET);
+
+// Init session
+
+$cookie = new CacheCookie('session', APP_SECRET);

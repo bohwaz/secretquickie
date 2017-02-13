@@ -15,7 +15,7 @@
 
 	{if $config.REQUIRE_OPENID && !$is_logged}
 	<div class="menu">
-		<a href="{$config.APP_URL}login.php" class="button">Login with <strong>{$config.OPENID_NAME}</strong></a>
+		<a href="{$config.APP_URL}auth/" class="button">Login with <strong>{$config.OPENID_NAME}</strong></a>
 	</div>
 	{/if}
 </nav>
