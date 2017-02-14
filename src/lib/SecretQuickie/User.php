@@ -19,16 +19,27 @@ class User
 	 */
 	protected $cookie;
 
+	/**
+	 * Initiates session
+	 */
 	public function __construct()
 	{
 		$this->cookie = new CacheCookie('session', APP_SECRET, self::SESSION_DURATION);
 	}
 
+	/**
+	 * Returns true if a user is logged
+	 * @return boolean
+	 */
 	public function isLogged()
 	{
 		return $this->cookie->get('user') === 'logged';
 	}
 
+	/**
+	 * Process OpenID Connect login with provider
+	 * @return boolean
+	 */
 	public function OpenIDLogin()
 	{
 		$oid = new OpenIDConnect(
@@ -38,11 +49,13 @@ class User
 			APP_URL . 'auth/'
 		);
 
+		// authenticate with openid connect
 		if (!$oid->authenticate())
 		{
 			return false;
 		}
 
+		// fetch user info
 		$info = $oid->getUserInfo();
 
 		if (empty($info->email))
@@ -50,6 +63,7 @@ class User
 			throw new \RuntimeException('No email supplied in OpenID response.');
 		}
 
+		// Check that the email is allowed
 		if (OPENID_EMAIL_WHITELIST)
 		{
 			$whitelist = preg_quote(OPENID_EMAIL_WHITELIST, '/');
@@ -61,6 +75,7 @@ class User
 			}
 		}
 
+		// Store in session
 		$this->cookie->set('user', 'logged');
 		$this->cookie->save();
 
