@@ -46,13 +46,10 @@ class SecretQuickie
 	 * Returns a new random identifier for a new secret
 	 * @return string
 	 */
-	protected function getRandomKey($length = null)
+	protected function getRandomKey($min, $max)
 	{
-		if (!$length)
-		{
-			// get a random length between 10 and 32 bytes
-			$length = \Sodium\randombytes_uniform(22)+10;
-		}
+		// get a random length
+		$length = ($max > $min) ? \Sodium\randombytes_uniform($max - $min) + $min : $min;
 
 		// generate random bytes
 		$key = \Sodium\randombytes_buf($length);
@@ -96,19 +93,13 @@ class SecretQuickie
 	 */
 	public function store($data, $expiry = 24, $password = null)
 	{
-		$uri = $key = $this->getRandomKey(8);
-
-		// Just in case we have a collision
-		while (apcu_exists(APCU_PREFIX . $key))
-		{
-			$key = $this->getRandomKey();
-		}
+		$password_uri = '';
 
 		// Create a random password
 		if (is_null($password))
 		{
-			$password = $this->getRandomKey();
-			$uri = $key . '&' . $password;
+			$password = $this->getRandomKey(10, 32);
+			$password_uri = '&' . $password;
 		}
 
 		// Creating salt
@@ -126,21 +117,14 @@ class SecretQuickie
 		\Sodium\memzero($crypto_key);
 		\Sodium\memzero($data);
 
-		$data = [
-			'text'  => $ciphertext,
-			'nonce' => $nonce,
-			'salt'  => $salt,
-		];
+		$key = $this->storeEncrypted(
+			\Sodium\bin2hex($ciphertext),
+			\Sodium\bin2hex($nonce),
+			\Sodium\bin2hex($salt),
+			(int) $expiry
+		);
 
-		// Apply base64 encode
-		$data = array_map('\Sodium\bin2hex', $data);
-
-		$data = json_encode($data);
-
-		// Store in memory
-		apcu_add(APCU_PREFIX . $key, $data, $expiry * 60 * 60);
-
-		return $uri;
+		return $key . $password_uri;
 	}
 
 	/**
@@ -171,6 +155,7 @@ class SecretQuickie
 		// Remove sensitive information from memory
 		\Sodium\memzero($crypto_key);
 
+		// Delete secret if password was correct
 		if ($data !== false)
 		{
 			apcu_delete(APCU_PREFIX . $key);
@@ -179,9 +164,24 @@ class SecretQuickie
 		return $data;
 	}
 
+	/**
+	 * Store an encrypted secret
+	 * @param  string  $ciphertext Hexadecimal-encoded encrypted text
+	 * @param  string  $nonce      Hexadecimal-encoded nonce
+	 * @param  string  $salt       Hexadecimal-encoded password salt
+	 * @param  integer $expiry     Secret expiry, in hours
+	 * @return string              Storage key referencing that secret
+	 */
 	public function storeEncrypted($ciphertext, $nonce, $salt, $expiry = 24)
 	{
-		$key = $this->getRandomKey(8);
+		// Get a random key
+		$key = $this->getRandomKey(8, 8);
+
+		// Just in case we have a collision: iterate until that key is not found
+		while (apcu_exists(APCU_PREFIX . $key))
+		{
+			$key = $this->getRandomKey(8, 8);
+		}
 
 		$data = [
 			'text'  => $ciphertext,
@@ -189,11 +189,20 @@ class SecretQuickie
 			'salt'  => $salt,
 		];
 
-		apcu_add(APCU_PREFIX . $key, json_encode($data), $expiry * 60 * 60);
+		$data = json_encode($data);
+
+		// Store in APC
+		apcu_add(APCU_PREFIX . $key, $data, $expiry * 60 * 60);
 
 		return $key;
 	}
 
+	/**
+	 * Retrieve an encrypted secret
+	 * @param  string  $key    Identifier key
+	 * @param  boolean $delete Set to true to delete the secret once fetched
+	 * @return array
+	 */
 	public function retrieveEncrypted($key, $delete = true)
 	{
 		if (!apcu_exists(APCU_PREFIX . $key))
