@@ -11,7 +11,7 @@
 
 	function decryptSecret(secret, password)
 	{
-		if (secret === false)
+		if (!secret)
 		{
 			switchModal('error');
 			return;
@@ -27,14 +27,12 @@
 		);
 
 		// Decrypt secret
-		var data = sodium.crypto_secretbox_open(
+		var data = sodium.crypto_secretbox_open_easy(
 			sodium.from_hex(secret.text),
 			sodium.from_hex(secret.nonce),
-			key
+			key,
+			'text'
 		);
-
-		sodium.memzero(password);
-		sodium.memzero(key);
 
 		if (data)
 		{

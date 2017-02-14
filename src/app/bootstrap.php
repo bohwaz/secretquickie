@@ -71,9 +71,11 @@ function load_dotenv($file, $required = [])
 
 $required = [
 	'APP_NAME',
+	'APP_URL',
+	'APP_ENV',
+	'APP_ENV',
 	'APCU_PREFIX',
-	'DEFAULT_EXPIRY',
-	'WORDS_DICTIONARY_FILE',
+	'REQUIRE_OPENID',
 ];
 
 $dotenv = load_dotenv(__DIR__ . '/../.env', $required);
@@ -108,6 +110,8 @@ $tpl->assign('is_logged', false);
 
 Security::tokenSetSecret(APP_SECRET);
 
-// Init session
+// User session
 
-$cookie = new CacheCookie('session', APP_SECRET);
+$user = new User;
+
+$tpl->assign('is_logged', $user->isLogged());

@@ -39,10 +39,12 @@ else if ($secret = $sq->findSecretInURL())
 	{
 		$tpl->assign('url', APP_URL . '?' . $key . '&' . $password);
 		$tpl->assign('token', Security::tokenHTML('view_' . $key));
+		$tpl->assign('password', (bool) $password);
 		$tpl->display('confirm.tpl');
 	}
 	elseif ($password)
 	{
+		$tpl->assign('url', APP_URL . '?' . $key);
 		$tpl->assign('secret', $sq->retrieve($key, $password));
 		$tpl->display('secret.tpl');
 	}

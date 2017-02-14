@@ -100,3 +100,5 @@
 
 <script type="text/javascript" src="{$config.APP_URL}static/sodium.min.js" integrity="sha384-{$js_hashes['sodium.min.js']}"></script>
 <script type="text/javascript" src="{$config.APP_URL}static/view.js" integrity="sha384-{$js_hashes['view.js']}"></script>
+
+{include file="_foot.tpl"}

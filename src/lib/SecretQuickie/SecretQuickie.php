@@ -87,25 +87,6 @@ class SecretQuickie
 		return $key;
 	}
 
-	public function getRandomPassphrase($length = 4)
-	{
-		if (!is_readable(WORDS_DICTIONARY_FILE))
-		{
-			throw new \RuntimeException(sprintf('Dictionary file %s not found or not readable.', WORDS_DICTIONARY_FILE));
-		}
-
-		$file = file(WORDS_DICTIONARY_FILE);
-		$max = count($file);
-		$phrase = [];
-
-		for ($i = 0; $i < $length; $i++)
-		{
-			$phrase[] = trim($file[\Sodium\randombytes_uniform($max)]);
-		}
-
-		return implode(' ', $phrase);
-	}
-
 	/**
 	 * Store a secret in memory and returns an identifier
 	 * @param  string $data     Secret to store
@@ -113,7 +94,7 @@ class SecretQuickie
 	 * @param  string|null $password User password, if NULL, a random password will be created and sent back
 	 * @return string           Identifier, eventually with a random password, if no password has been supplied
 	 */
-	public function store($data, $expiry = DEFAULT_EXPIRY, $password = null)
+	public function store($data, $expiry = 24, $password = null)
 	{
 		$uri = $key = $this->getRandomKey(8);
 
@@ -175,7 +156,7 @@ class SecretQuickie
 		// Invalid data?!
 		if (!$data)
 		{
-			return false;
+			return $data;
 		}
 
 		// decode data
@@ -198,7 +179,7 @@ class SecretQuickie
 		return $data;
 	}
 
-	public function storeEncrypted($ciphertext, $nonce, $salt, $expiry = DEFAULT_EXPIRY)
+	public function storeEncrypted($ciphertext, $nonce, $salt, $expiry = 24)
 	{
 		$key = $this->getRandomKey(8);
 
@@ -217,7 +198,7 @@ class SecretQuickie
 	{
 		if (!apcu_exists(APCU_PREFIX . $key))
 		{
-			return false;
+			return null;
 		}
 
 		// Fetch key from APCu
