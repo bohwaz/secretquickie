@@ -1,0 +1,16 @@
+{
+	"name": "bohwaz/secretquickie",
+	"description": "Secret Quickie, a one time secret web app",
+	"keywords": ["one time secret"],
+	"license": "BSD",
+	"type": "project",
+	"repositories": [
+		{
+			"type": "vcs",
+			"url":  "https://fossil.kd2.org/kd2fw/"
+		}
+	],
+	"require": {
+		"kd2/kd2fw": "dev-dev"
+	}
+}

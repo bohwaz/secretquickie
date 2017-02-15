@@ -4,9 +4,9 @@
 
 	function switchModal(name)
 	{
-		var mods = document.querySelectorAll('.modal > [type=checkbox]');
-    	[].forEach.call(mods, function(mod){ mod.checked = false; });
-    	document.getElementById('modal_' + name).checked = true;
+		var mods = document.querySelectorAll('.md');
+		[].forEach.call(mods, function(mod){ mod.className = 'md'; });
+		document.getElementById('md_' + name).className += ' open';
 	}
 
 	function decryptSecret(secret, password)
@@ -36,8 +36,12 @@
 
 		if (data)
 		{
-			switchModal('view');
-			document.getElementById('secret').value = data;
+			switchModal('secret');
+			var secret = document.getElementById('secret');
+			secret.value = data;
+			secret.select();
+			secret.focus();
+			secret.onclick = function () { this.select(); };
 		}
 		else
 		{
@@ -73,6 +77,8 @@
 		var data = token.name + '=' + token.value;
 
 		xhr.send(data);
+
+		return false;
 	};
 
 

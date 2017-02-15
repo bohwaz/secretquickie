@@ -56,3 +56,4 @@ For Ubuntu < 16.10 and Debian Wheezy/Jessie:
 ## Credits
 
 * Uses [libsodium.js](https://github.com/jedisct1/libsodium.js) and php-libsodium from Frank Denis and Scott Arciszewski
+* CSS framework is [picnic.css](https://picnicss.com/)

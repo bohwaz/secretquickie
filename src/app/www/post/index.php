@@ -6,6 +6,28 @@ use \KD2\Security;
 
 require __DIR__ . '/../../bootstrap.php';
 
+function is_posting($api = false)
+{
+	if (!Security::tokenCheck('post'))
+	{
+		return false;
+	}
+
+	if (empty($_POST['expiry']) || !is_numeric($_POST['expiry']))
+	{
+		return false;
+	}
+
+	if ($api)
+	{
+		return !empty($_POST['nonce']) && !empty($_POST['salt']) && !empty($_POST['text']);
+	}
+	else
+	{
+		return !empty($_POST['secret']);
+	}
+}
+
 if (!$user->isLogged() && REQUIRE_OPENID)
 {
 	$tpl->assign('error', sprintf('Please login with %s to be able to create new secrets.', OPENID_NAME));
@@ -13,7 +35,25 @@ if (!$user->isLogged() && REQUIRE_OPENID)
 	exit;
 }
 
-if (!empty($_POST['post']) && Security::tokenCheck('post'))
+if (!empty($_GET['js']))
+{
+	if (!is_posting(true))
+	{
+		$response = ['error' => 'Invalid form'];
+		$response['debug'] = $_POST;
+	}
+	else
+	{
+		$sq = new SecretQuickie;
+		$uri = $sq->storeEncrypted($_POST['text'], $_POST['nonce'], $_POST['salt'], (int)$_POST['expiry']);
+		$response = ['url' => APP_URL . '?' . $uri];
+	}
+
+	echo json_encode($response);
+	exit;
+}
+
+if (!empty($_POST['post']) && !empty($_POST['secret']) && Security::tokenCheck('post'))
 {
 	$data = isset($_POST['secret']) ? $_POST['secret'] : null;
 	$password = !empty($_POST['password']) ? $_POST['password'] : null;

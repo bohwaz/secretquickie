@@ -34,7 +34,7 @@
 	<form method="post" action="{$config.APP_URL}post/">
 	{$token|raw}
 
-	<section class="post">
+	<section id="postForm">
 		<article>
 			<header>
 				<h2>Post a new secret
@@ -49,8 +49,41 @@
 					</select>
 					<input class="stack" name="password" type="text" placeholder="Optional password" />
 				</fieldset>
-				<p><input type="submit" class="button" name="post" value="Create a secret link" /></p>
+				<p><input type="submit" class="button" name="post" value="Create a secret link &rarr;" /></p>
 			</section>
+		</article>
+	</section>
+
+	<section class="modal">
+		<input id="modal_wait" type="checkbox" />
+		<span for="modal_wait" class="overlay"></span>
+		<article>
+			<header>
+				<h3>Loading…</h3>
+			</header>
+		</article>
+	</section>
+
+	<section class="modal">
+		<input id="modal_confirm" type="checkbox" />
+		<span for="modal_confirm" class="overlay"></span>
+		<article>
+			<header>
+				<h3>Your secret has been saved</h3>
+			</header>
+			<section class="content">
+				<p>
+					Share this link:
+					<input type="text" readonly="readonly" class="url" />
+				</p>
+
+				<p>
+					The secret will be deleted at the first time it's been viewed.
+				</p>
+			</section>
+			<footer>
+				<a class="button dangerous burn" href="#">View and delete this secret now</a>
+			</footer>
 		</article>
 	</section>
 

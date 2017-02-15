@@ -1,0 +1,59 @@
+body {
+	background: #eee;
+}
+
+a {
+	transition: color 0.3s, background 0.3s;
+}
+
+main {
+	background: #fff;
+	text-align: left;
+	width: 90%;
+	max-width: 50em;
+	margin: 1em auto;
+	margin-top: 2em;
+	box-shadow: 0 1px 3px 0 #ccc;
+	padding: 2em 1em 1em 1em;
+}
+
+.label {
+	margin: 0;
+}
+
+input.url {
+	background: yellow;
+	color: black;
+	cursor: pointer;
+}
+
+body > nav {
+	box-shadow: 0 1px 3px 0 #ccc;
+	position: absolute;
+}
+
+html, body {
+	height: auto;
+}
+
+#wrong_password {
+	display: none;
+}
+
+.md {
+	opacity: 0;
+	max-height: 0;
+	overflow: hidden;
+	transition: all 0.3s;
+}
+
+.md.open {
+	opacity: 1;
+	max-height: 90%;
+	overflow: auto;
+}
+
+.brand img {
+	height: 2em;
+	margin-right: 1em;
+}

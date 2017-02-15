@@ -71,8 +71,8 @@ function load_dotenv($file, $required = [])
 
 $required = [
 	'APP_NAME',
+	'APP_LOGO',
 	'APP_URL',
-	'APP_ENV',
 	'APP_ENV',
 	'APCU_PREFIX',
 	'REQUIRE_OPENID',
@@ -82,7 +82,7 @@ $dotenv = load_dotenv(__DIR__ . '/../.env', $required);
 
 // Autoload: use system-wide libraries if not found in local lib directory
 
-set_include_path(__DIR__ . '/../lib' . PATH_SEPARATOR . get_include_path());
+set_include_path(__DIR__ . '/../lib' . PATH_SEPARATOR . __DIR__ . '/../vendor' . PATH_SEPARATOR . get_include_path());
 
 spl_autoload_register(function ($name) {
 	// Can't use default spl_autoload as it is lowercasing file names :(
