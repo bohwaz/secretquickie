@@ -12,5 +12,10 @@
 	],
 	"require": {
 		"kd2/kd2fw": "dev-dev"
-	}
+	},
+    "autoload": {
+        "psr-4": {
+            "SecretQuickie\\": "lib/SecretQuickie/"
+        }
+    }
 }

@@ -41,7 +41,7 @@ assert(
 $password = 'abcd1234';
 
 assert(
-	strlen($key = $sq->store('test', \SecretQuickie\DEFAULT_EXPIRY, $password)),
+	strlen($key = $sq->store('test', 24, $password)),
 	'Storing secret with user password'
 );
 

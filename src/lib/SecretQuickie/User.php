@@ -66,9 +66,6 @@ class User
 		// Check that the email is allowed
 		if (OPENID_EMAIL_WHITELIST)
 		{
-			$whitelist = preg_quote(OPENID_EMAIL_WHITELIST, '/');
-			$whitelist = str_replace('\*', '.*?', $whitelist);
-
 			if (!preg_match('/' . $whitelist . '/', $info->email))
 			{
 				throw new \RuntimeException('E-mail address is not whitelisted. Access denied.');

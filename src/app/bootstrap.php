@@ -76,19 +76,27 @@ $required = [
 	'APP_ENV',
 	'APCU_PREFIX',
 	'REQUIRE_OPENID',
+	'USE_COMPOSER',
 ];
 
 $dotenv = load_dotenv(__DIR__ . '/../.env', $required);
 
 // Autoload: use system-wide libraries if not found in local lib directory
 
-set_include_path(__DIR__ . '/../lib' . PATH_SEPARATOR . __DIR__ . '/../vendor' . PATH_SEPARATOR . get_include_path());
+if (USE_COMPOSER)
+{
+	require __DIR__ . '/../vendor/autoload.php';
+}
+else
+{
+	set_include_path(__DIR__ . '/../lib' . PATH_SEPARATOR . get_include_path());
 
-spl_autoload_register(function ($name) {
-	// Can't use default spl_autoload as it is lowercasing file names :(
-	$file =  str_replace('\\', '/', $name) . '.php';
-	require $file;
-});
+	spl_autoload_register(function ($name) {
+	       // Can't use default spl_autoload as it is lowercasing file names :(
+	       $file =  str_replace('\\', '/', $name) . '.php';
+	       require $file;
+	});
+}
 
 // Init error manager
 
@@ -98,7 +106,7 @@ ErrorManager::setLogFile(__DIR__ . '/error.log');
 // Init template system
 
 Smartyer::setTemplateDir(__DIR__ . '/templates');
-Smartyer::setCompileDir(__DIR__ . '/cache/compiled');
+Smartyer::setCompileDir(sys_get_temp_dir());
 
 $tpl = new Smartyer;
 
