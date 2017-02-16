@@ -48,3 +48,8 @@ html, body {
 footer .help {
 	float: right;
 }
+
+.modal>input:checked ~ .overlay ~ * {
+    -webkit-transform: translateX(-50%) translateY(-50%);
+    transform: translateX(-50%) translateY(-50%);
+}
