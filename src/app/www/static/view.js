@@ -26,13 +26,19 @@
 			sodium.crypto_pwhash_scryptsalsa208sha256_MEMLIMIT_INTERACTIVE
 		);
 
-		// Decrypt secret
-		var data = sodium.crypto_secretbox_open_easy(
-			sodium.from_hex(secret.text),
-			sodium.from_hex(secret.nonce),
-			key,
-			'text'
-		);
+		try {
+			// Decrypt secret
+			var data = sodium.crypto_secretbox_open_easy(
+				sodium.from_hex(secret.text),
+				sodium.from_hex(secret.nonce),
+				key,
+				'text'
+			);
+		}
+		catch (err)
+		{
+			var data = false;
+		}
 
 		if (data)
 		{
@@ -41,7 +47,12 @@
 			secret.value = data;
 			secret.select();
 			secret.focus();
-			secret.onclick = function () { this.select(); };
+
+			document.querySelector('.copy').onclick = function () {
+				secret.select();
+				document.execCommand('copy');
+				return false;
+			};
 		}
 		else
 		{
@@ -69,7 +80,8 @@
 
 		xhr.onreadystatechange = function() {
 			if(xhr.readyState == 4 && xhr.status == 200) {
-				decryptSecret(JSON.parse(xhr.responseText), password);
+				secret = JSON.parse(xhr.responseText);
+				decryptSecret(secret, password);
 			}
 		}
 

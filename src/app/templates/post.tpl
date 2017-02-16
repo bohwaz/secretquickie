@@ -1,4 +1,4 @@
-{include file="_head.tpl"}
+{include file="_head.tpl" need_login=true}
 
 {if !empty($secret_url)}
 
@@ -66,10 +66,11 @@
 
 	<section class="modal">
 		<input id="modal_confirm" type="checkbox" />
-		<span for="modal_confirm" class="overlay"></span>
+		<label for="modal_confirm" class="overlay"></label>
 		<article>
 			<header>
 				<h3>Your secret has been saved</h3>
+				<label for="modal_confirm" class="close">&times;</label>
 			</header>
 			<section class="content">
 				<p>
@@ -82,6 +83,7 @@
 				</p>
 			</section>
 			<footer>
+				<a class="button copy" href="#">Copy</a>
 				<a class="button dangerous burn" href="#">View and delete this secret now</a>
 			</footer>
 		</article>

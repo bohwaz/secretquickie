@@ -14,17 +14,14 @@
 	<a href="{$config.APP_URL}" class="brand">
 		<span>
 			{if $config.APP_LOGO}<img src="{$config.APP_URL}static/user/{$config.APP_LOGO}" alt="{$config.APP_NAME}" />{/if}
-			{$config.APP_NAME}</span>
+			{$config.APP_NAME}
+		</span>
 	</a>
 
-	{if $config.REQUIRE_OPENID && !$is_logged}
-	<div class="menu">
-		<a href="{$config.APP_URL}auth/" class="button">Login with <strong>{$config.OPENID_NAME}</strong></a>
-	</div>
-	{elseif $is_logged}
-	<div class="menu">
-		<h2><span class="label success">Logged in</span></h2>
-	</div>
+	{if !empty($need_login) && $config.REQUIRE_OPENID && !$is_logged}
+		<div class="menu">
+			<a href="{$config.APP_URL}auth/" class="button">Login with <strong>{$config.OPENID_NAME}</strong></a>
+		</div>
 	{/if}
 </nav>
 

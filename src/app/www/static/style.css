@@ -57,3 +57,7 @@ html, body {
 	height: 2em;
 	margin-right: 1em;
 }
+
+footer .help {
+	float: right;
+}

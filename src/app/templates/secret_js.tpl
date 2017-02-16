@@ -49,7 +49,8 @@
 		<textarea readonly="readonly" id="secret" cols="70" rows="15"></textarea>
 	</section>
 	<footer>
-		<p><span class="label">This secret has been deleted from our server.</span></p>
+		<p class="help">This secret has been deleted from our server.</p>
+		<button class="button copy">Copy to clipboard</button>
 	</footer>
 </article>
 

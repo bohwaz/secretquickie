@@ -21,9 +21,7 @@
 
 		if (password.length == 0)
 		{
-			password = sodium.randombytes_buf(8);
-			password = window.btoa(password);
-			password = password.replace(/[^A-Z0-9]/ig, '');
+			password = sodium.randombytes_buf(12, 'hex');
 			password_uri = '#' + password;
 		}
 
@@ -76,10 +74,14 @@
 	function confirmSecret(url, password_uri)
 	{
 		document.querySelector('.burn').href = url + password_uri;
+		document.querySelector('.copy').onclick = function () {
+			input.select();
+			document.execCommand('copy');
+			return false;
+		};
 		
 		var input = document.querySelector('input.url');
 		input.value = url + password_uri;
-		input.onclick = function () { this.focus(); this.select(); };
 		input.select();
 		input.focus();
 
