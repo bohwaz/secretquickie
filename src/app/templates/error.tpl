@@ -1,4 +1,4 @@
-{include file="_head.tpl"}
+{include file="_head.tpl" need_login=true}
 
 <h2>
 	<span class="label error">Error</span>
