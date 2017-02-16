@@ -4,9 +4,13 @@
 
 	function switchModal(name)
 	{
-		var mods = document.querySelectorAll('.md');
-		[].forEach.call(mods, function(mod){ mod.className = 'md'; });
-		document.getElementById('md_' + name).className += ' open';
+		var mods = document.querySelectorAll('.modal > [type=checkbox]');
+		[].forEach.call(mods, function(mod){ mod.checked = false; });
+
+		if (name)
+		{
+			document.getElementById('modal_' + name).checked = true;
+		}
 	}
 
 	function decryptSecret(secret, password)

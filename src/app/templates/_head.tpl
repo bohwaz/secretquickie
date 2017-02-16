@@ -2,8 +2,8 @@
 <html>
 <head>
 	<meta charset="utf-8" />
-	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/picnic.min.css" />
-	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/style.css" />
+	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/picnic.min.css?{$asset_version}" />
+	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/style.css?{$asset_version}" />
 	<link rel="icon" href="data:;base64,iVBORw0KGgo=" /> {* Prevents favicon requests *}
 	<title>{$config.APP_NAME}</title>
 </head>
@@ -25,4 +25,3 @@
 	{/if}
 </nav>
 
-<main>

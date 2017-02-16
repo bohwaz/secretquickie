@@ -1,5 +1,6 @@
 {include file="_head.tpl"}
 
+<main>
 <form method="post" action="{$url}">
 {$token|raw}
 
@@ -37,5 +38,6 @@
 {/if}
 
 </form>
+</main>
 
 {include file="_foot.tpl"}

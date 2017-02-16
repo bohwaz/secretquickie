@@ -1,5 +1,7 @@
 {include file="_head.tpl" need_login=true}
 
+<main>
+
 {if !empty($secret_url)}
 
 	<article class="card">
@@ -37,7 +39,7 @@
 	<section id="postForm">
 		<article>
 			<header>
-				<h2>Post a new secret
+				<h2>Post a new secret</h2>
 			</header>
 			<section class="content">
 				<fieldset>
@@ -91,8 +93,10 @@
 
 	</form>
 
-	<script type="text/javascript" src="{$config.APP_URL}static/sodium.min.js" integrity="sha384-{$js_hashes['sodium.min.js']}"></script>
-	<script type="text/javascript" src="{$config.APP_URL}static/post.js" integrity="sha384-{$js_hashes['post.js']}"></script>
+	<script type="text/javascript" src="{$config.APP_URL}static/sodium.min.js?{$asset_version}" integrity="sha384-{$js_hashes['sodium.min.js']}"></script>
+	<script type="text/javascript" src="{$config.APP_URL}static/post.js?{$asset_version}" integrity="sha384-{$js_hashes['post.js']}"></script>
 {/if}
+
+</main>
 
 {include file="_foot.tpl"}

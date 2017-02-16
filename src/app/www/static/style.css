@@ -40,19 +40,6 @@ html, body {
 	display: none;
 }
 
-.md {
-	opacity: 0;
-	max-height: 0;
-	overflow: hidden;
-	transition: all 0.3s;
-}
-
-.md.open {
-	opacity: 1;
-	max-height: 90%;
-	overflow: auto;
-}
-
 .brand img {
 	height: 2em;
 	margin-right: 1em;

@@ -1,5 +1,6 @@
 {include file="_head.tpl"}
 
+<main>
 {if $secret === null}
 
 	<article class="card">
@@ -42,5 +43,6 @@
 	{/literal}
 	</script>
 {/if}
+</main>
 
 {include file="_foot.tpl"}
