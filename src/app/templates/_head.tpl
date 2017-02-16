@@ -5,6 +5,7 @@
 	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/picnic.min.css?{$asset_version}" />
 	<link rel="stylesheet" type="text/css" href="{$config.APP_URL}static/style.css?{$asset_version}" />
 	<link rel="icon" href="data:;base64,iVBORw0KGgo=" /> {* Prevents favicon requests *}
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>{$config.APP_NAME}</title>
 </head>
 

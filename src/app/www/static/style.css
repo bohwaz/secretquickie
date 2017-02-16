@@ -49,7 +49,9 @@ footer .help {
 	float: right;
 }
 
+/* Fix buggy Safari rendering */
 .modal>input:checked ~ .overlay ~ * {
-    -webkit-transform: translateX(-50%) translateY(-50%);
-    transform: translateX(-50%) translateY(-50%);
+	-webkit-font-smoothing: subpixel-antialiased;
+	transform: translateX(-50%) translateY(-50%);
+	-webkit-filter: blur(0);
 }

@@ -65,7 +65,7 @@
 			<h3>Here is the secret:</h3>
 		</header>
 		<section class="content">
-			<textarea readonly="readonly" id="secret" cols="70" rows="15"></textarea>
+			<textarea readonly="readonly" id="secret" cols="70" rows="12"></textarea>
 		</section>
 		<footer>
 			<p class="help">This secret has been deleted from our server.</p>
