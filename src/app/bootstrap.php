@@ -74,9 +74,15 @@ $required = [
 	'APP_LOGO',
 	'APP_URL',
 	'APP_ENV',
+	'APP_SECRET',
 	'APCU_PREFIX',
 	'REQUIRE_OPENID',
 	'USE_COMPOSER',
+	'OPENID_NAME',
+	'OPENID_URL',
+	'OPENID_CLIENT_ID',
+	'OPENID_CLIENT_SECRET',
+	'OPENID_EMAIL_WHITELIST',
 ];
 
 $dotenv = load_dotenv(__DIR__ . '/../.env', $required);
@@ -103,6 +109,19 @@ else
 ErrorManager::enable(APP_ENV != 'dev' ? ErrorManager::PRODUCTION : ErrorManager::DEVELOPMENT);
 ErrorManager::setLogFile(__DIR__ . '/error.log');
 
+// Check config
+
+if (OPENID_EMAIL_WHITELIST)
+{
+	try {
+		preg_match('/' . OPENID_EMAIL_WHITELIST . '/', '');
+	}
+	catch (\Exception $e)
+	{
+		throw new \LogicException('Invalid regexp in OPENID_EMAIL_WHITELIST: ' . $e->getMessage());
+	}
+}
+
 // Init template system
 
 Smartyer::setTemplateDir(__DIR__ . '/templates');
@@ -112,7 +131,7 @@ $tpl = new Smartyer;
 
 $tpl->assign('config', $dotenv);
 $tpl->assign('js_hashes', load_js_hashes(__DIR__ . '/../js_hashes.txt'));
-$tpl->assign('is_logged', false);
+$tpl->assign('asset_version', '2017.0.1');
 
 // Set secret
 
