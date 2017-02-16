@@ -1,5 +1,5 @@
 (function () {
-	var password = window.location.hash.slice(1) || null;
+	var password = window.location.hash.slice(1) || false;
 	var secret = null;
 
 	function switchModal(name)
@@ -10,6 +10,11 @@
 		if (name)
 		{
 			document.getElementById('modal_' + name).checked = true;
+
+			if (name == 'password' || name == 'confirm')
+			{
+				document.querySelector('.' + name).focus();
+			}
 		}
 	}
 
@@ -67,8 +72,8 @@
 		return data;
 	}
 
-	window.secretQuickie = function () {
-		var password = window.location.hash.slice(1) || document.getElementById('password').value;
+	function secretQuickie () {
+		var password = window.location.hash.slice(1) || document.querySelector('.password').value;
 
 		switchModal('wait');
 
@@ -95,8 +100,8 @@
 		xhr.send(data);
 
 		return false;
-	};
+	}
 
-
-	switchModal(password ? 'confirm' : 'password');
+	switchModal(!password ? 'password' : 'confirm');
+	document.querySelector(!password ? '.decrypt' : '.confirm').onclick = function () { return secretQuickie(); };
 }());

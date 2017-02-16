@@ -34,10 +34,10 @@
 		</header>
 		<section class="content">
 			<h3 id="wrong_password"><span class="label error">Wrong password or corrupt secret.</span></h3>
-			<input type="password" name="password" id="password" />
+			<input type="password" name="password" class="password" />
 		</section>
 		<footer>
-			<a class="button" onclick="return secretQuickie(); return false;">Decrypt secret</a>
+			<button class="decrypt">Decrypt secret</button>
 		</footer>
 	</article>
 </section>
@@ -53,7 +53,7 @@
 			<p>Careful: the secret will only be displayed once.</p>
 		</section>
 		<footer>
-			<a class="button" onclick="return secretQuickie();">View secret</a>
+			<button class="confirm">View secret</button>
 		</footer>
 	</article>
 </section>
