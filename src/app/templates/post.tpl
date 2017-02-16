@@ -68,11 +68,11 @@
 
 	<section class="modal">
 		<input id="modal_confirm" type="checkbox" />
-		<label for="modal_confirm" class="overlay"></label>
+		<a href="{$config.APP_URL}" class="overlay"></a>
 		<article>
 			<header>
 				<h3>Your secret has been saved</h3>
-				<label for="modal_confirm" class="close">&times;</label>
+				<a class="close" href="{$config.APP_URL}">&times;</a>
 			</header>
 			<section class="content">
 				<p>

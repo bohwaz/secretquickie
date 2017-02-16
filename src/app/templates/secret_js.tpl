@@ -63,6 +63,7 @@
 	<article class="md" id="md_secret">
 		<header>
 			<h3>Here is the secret:</h3>
+			<a class="close" href="{$config.APP_URL}">&times;</a>
 		</header>
 		<section class="content">
 			<textarea readonly="readonly" id="secret" cols="70" rows="15"></textarea>
