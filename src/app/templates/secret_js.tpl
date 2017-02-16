@@ -6,10 +6,11 @@
 
 <section class="modal">
 	<input id="modal_error" type="checkbox" />
-	<label for="modal_error" class="overlay"></label>
+	<a href="{$config.APP_URL}" class="overlay"></a>
 	<article>
 		<header>
 			<h2><span class="label error">Error:</span> This secret has expired or has already been viewed.</span></h2>
+			<a class="close" href="{$config.APP_URL}">&times;</a>
 		</header>
 	</article>
 </section>
