@@ -131,7 +131,7 @@ $tpl = new Smartyer;
 
 $tpl->assign('config', $dotenv);
 $tpl->assign('js_hashes', load_js_hashes(__DIR__ . '/../js_hashes.txt'));
-$tpl->assign('asset_version', '2017.0.3');
+$tpl->assign('asset_version', '2017.0.4');
 
 // Set secret
 

@@ -37,7 +37,12 @@ html, body {
 }
 
 #wrong_password {
-	display: none;
+	transition: all 0.3s;
+}
+
+#wrong_password.hidden {
+	visibility: hidden;
+	opacity: 0;
 }
 
 .brand img {

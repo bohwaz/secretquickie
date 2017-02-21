@@ -1,6 +1,6 @@
 {include file="_head.tpl"}
 
-<form method="post" action="{$config.APP_URL}?get={$secret_key}" onsubmit="return secretQuickie();">
+<form method="post" action="{$config.APP_URL}?get={$secret_key}">
 
 {$token_js|raw}
 
@@ -32,8 +32,8 @@
 			<h3>Enter password to see this secret:</h3>
 		</header>
 		<section class="content">
-			<h3 id="wrong_password"><span class="label error">Wrong password or corrupt secret.</span></h3>
 			<input type="password" name="password" class="password" />
+			<h3 id="wrong_password" class="hidden"><span class="label error">Wrong password or corrupt secret.</span></h3>
 		</section>
 		<footer>
 			<button class="decrypt">Decrypt secret</button>

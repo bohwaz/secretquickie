@@ -66,7 +66,11 @@
 		else
 		{
 			switchModal('password');
-			document.getElementById('wrong_password').style.display = 'block';
+			document.getElementById('wrong_password').className = '';
+
+			document.querySelector('.password').onkeyup = function () {
+				document.getElementById('wrong_password').className = 'hidden';
+			};
 		}
 
 		return data;
@@ -80,7 +84,7 @@
 		if (secret)
 		{
 			decryptSecret(secret, password);
-			return null;
+			return false;
 		}
 
 		var xhr = new XMLHttpRequest;
@@ -104,4 +108,5 @@
 
 	switchModal(!password ? 'password' : 'confirm');
 	document.querySelector(!password ? '.decrypt' : '.confirm').onclick = function () { return secretQuickie(); };
+	document.forms[0].onsubmit = function () { console.log('sub'); return secretQuickie(); };
 }());
