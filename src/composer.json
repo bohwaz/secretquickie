@@ -4,18 +4,10 @@
 	"keywords": ["one time secret"],
 	"license": "BSD",
 	"type": "project",
-	"repositories": [
-		{
-			"type": "vcs",
-			"url":  "https://fossil.kd2.org/kd2fw/"
-		}
-	],
-	"require": {
-		"kd2/kd2fw": "dev-dev"
-	},
     "autoload": {
         "psr-4": {
-            "SecretQuickie\\": "lib/SecretQuickie/"
+            "SecretQuickie\\": "lib/SecretQuickie/",
+            "KD2\\": "lib/KD2/"
         }
     }
 }
