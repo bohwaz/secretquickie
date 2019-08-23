@@ -1,6 +1,6 @@
 # SecretQuickie — One Time Secret web app
 
-This small web app stores a secret text, encrypts it, and will delete it the first it is viewed.
+This small web app stores a secret text, encrypts it, and will delete it the first time it is viewed.
 
 This is similar to what [One Time Secret.com](https://github.com/onetimesecret/onetimesecret) is doing. Except this is a standalone PHP application, with solid client-side and server-side encryption.
 
@@ -13,9 +13,9 @@ This is similar to what [One Time Secret.com](https://github.com/onetimesecret/o
 * Secrets are always stored encrypted, there is no way to decrypt any secret without the user password
 * Doesn't use any network communication like MySQL, memcache or Redis: secrets are never transmitted over any network
 * Secrets are 100% anonymous, no IP or user info is stored
-* Secrets will disppear if the server is shutdown, stolen, etc.
-* If the client has disabled javascript, encryption/decryption will happen on server side (fallback)
-* Uses APCu for memory storage
+* Secrets will be destroyed if the server is shutdown, stolen, etc. as they are only stored in RAM
+* If the client has disabled javascript, encryption/decryption will happen on server side (fallback, less secure)
+* Uses APCu to store secrets in RAM
 * Uses php-libsodium and libsodium.js for cryptography
 * Uses [SubResource Integrity (SRI)](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity) to load javascript resources, adding extra security to client-side encryption, see for details.
 
@@ -50,8 +50,8 @@ For Ubuntu < 16.10 and Debian Wheezy/Jessie:
 
 ## Installation of SecretQuickie
 
-* Set up a new virtual host to use the directory app/www as its document root.
-* Copy the .env.example to .env and edit it to suit your needs
+* Set up a new virtual host to use the directory `app/www` as its document root.
+* Copy the `.env.example` to `.env` and edit it to suit your needs
 
 ## Credits
 
