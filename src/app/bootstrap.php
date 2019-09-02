@@ -4,7 +4,7 @@ namespace SecretQuickie;
 
 use KD2\Smartyer;
 use KD2\ErrorManager;
-use KD2\Security;
+use KD2\Form;
 use KD2\CacheCookie;
 
 /**
@@ -86,13 +86,15 @@ $required = [
 
 $dotenv = load_dotenv(__DIR__ . '/../.env', $required);
 
-// Autoload: use system-wide libraries if not found in local lib directory
-
-set_include_path(__DIR__ . '/../lib' . PATH_SEPARATOR . get_include_path());
-
 spl_autoload_register(function ($name) {
 	// Can't use default spl_autoload as it is lowercasing file names :(
 	$file =  str_replace('\\', '/', $name) . '.php';
+	$file = __DIR__ . '/../lib/' . $file;
+
+	if (!file_exists($file)) {
+		throw new \Exception('Cannot autoload: ' . $file);
+	}
+
 	require $file;
 });
 
@@ -127,7 +129,7 @@ $tpl->assign('asset_version', '2017.0.4');
 
 // Set secret
 
-Security::tokenSetSecret(APP_SECRET);
+Form::tokenSetSecret(APP_SECRET);
 
 // User session
 
