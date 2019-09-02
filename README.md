@@ -21,37 +21,27 @@ This is similar to what [One Time Secret.com](https://github.com/onetimesecret/o
 
 ## Requirements
 
-* PHP 5.6+
+* PHP 7.1+
 * PHP APCu extension
 * PHP libsodium extension
 
 ## Installation of dependencies (Debian/Ubuntu)
 
-You will need PHP (5.6 or 7+), and then:
-
-For PHP 5:
-
-	# apt-get install php5-apcu
-
-For PHP 7:
+You will need PHP, libsodium and APCu.
 
 	# apt-get install php-apcu
 
-For Ubuntu 16.10+ / Debian Stretch+:
-
-	# apt-get install php-libsodium
-
-For Ubuntu < 16.10 and Debian Wheezy/Jessie:
-
-	# apt-get install libsodium-dev
-	# pecl install libsodium
-	# echo "extension=libsodium.so" > /etc/php5/mods-available/libsodium.ini
-	# for DIR in /etc/php5/{apache2,cli,fpm}/conf.d; do ln -s "../../mods-available/libsodium.ini" $DIR/20-libsodium.ini; done;
+Sodium should be already included in the PHP distribution.
 
 ## Installation of SecretQuickie
 
 * Set up a new virtual host to use the directory `app/www` as its document root.
 * Copy the `.env.example` to `.env` and edit it to suit your needs
+
+## ChangeLog
+
+* 0.1.0, initial release, works with PHP 5.6 and 7.0 with the libsodium PECL
+* 0.2.0, updated to work with PHP 7.1+ and integrated libsodium
 
 ## Credits
 
