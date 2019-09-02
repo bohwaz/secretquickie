@@ -7,6 +7,13 @@ define js_hashes
 	done
 endef
 
+all:
+
 js_hashes.txt: app/www/static/*.js; @$(value js_hashes)
 
+test:
+	php -d zend.assertions=1 -d assert.exception=1 -d assert.active=1 -d apc.enable_cli=1 tests/*
+
 .ONESHELL:
+
+.PHONY: test all
