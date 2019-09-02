@@ -24,9 +24,9 @@ class SecretQuickie
 			throw new \LogicException('APCu cache is not enabled for CLI. Please check "apc.enable_cli" in your ini file.');
 		}
 
-		if (!function_exists('\Sodium\crypto_secretbox'))
+		if (!function_exists('\sodium_crypto_secretbox'))
 		{
-			throw new \LogicException('libsodium extension not found. Try: pecl install libsodium');
+			throw new \LogicException('sodium extension not found. Try: pecl install sodium');
 		}
 	}
 
@@ -49,10 +49,10 @@ class SecretQuickie
 	protected function getRandomKey($min, $max)
 	{
 		// get a random length
-		$length = ($max > $min) ? \Sodium\randombytes_uniform($max - $min) + $min : $min;
+		$length = ($max > $min) ? random_int($min, $max) : $min;
 
 		// generate random bytes
-		$key = \Sodium\randombytes_buf($length);
+		$key = random_bytes($length);
 
 		// encode to something readable
 		$key = base64_encode($key);
@@ -70,17 +70,17 @@ class SecretQuickie
 	protected function getCryptoKey($password, $salt)
 	{
 		// Derivating a key from password
-		$key = \Sodium\crypto_pwhash_scryptsalsa208sha256(
-			\Sodium\CRYPTO_SECRETBOX_KEYBYTES,
+		$key = sodium_crypto_pwhash_scryptsalsa208sha256(
+			SODIUM_CRYPTO_SECRETBOX_KEYBYTES,
 			$password,
 			$salt,
-			\Sodium\CRYPTO_PWHASH_SCRYPTSALSA208SHA256_OPSLIMIT_INTERACTIVE,
-			\Sodium\CRYPTO_PWHASH_SCRYPTSALSA208SHA256_MEMLIMIT_INTERACTIVE
+			SODIUM_CRYPTO_PWHASH_SCRYPTSALSA208SHA256_OPSLIMIT_INTERACTIVE,
+			SODIUM_CRYPTO_PWHASH_SCRYPTSALSA208SHA256_MEMLIMIT_INTERACTIVE
 		);
 
 		// Erase password from memory
-		\Sodium\memzero($password);
-	
+		sodium_memzero($password);
+
 		return $key;
 	}
 
@@ -103,24 +103,24 @@ class SecretQuickie
 		}
 
 		// Creating salt
-		$salt_length = \Sodium\CRYPTO_PWHASH_SCRYPTSALSA208SHA256_SALTBYTES;
-		$salt = \Sodium\randombytes_buf($salt_length);
+		$salt_length = SODIUM_CRYPTO_PWHASH_SCRYPTSALSA208SHA256_SALTBYTES;
+		$salt = random_bytes($salt_length);
 
 		// Derivating a key from password
 		$crypto_key = $this->getCryptoKey($password, $salt);
 
 		// Encrypt data using key
-		$nonce = \Sodium\randombytes_buf(\Sodium\CRYPTO_SECRETBOX_NONCEBYTES);
-		$ciphertext = \Sodium\crypto_secretbox($data, $nonce, $crypto_key);
+		$nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+		$ciphertext = sodium_crypto_secretbox($data, $nonce, $crypto_key);
 
 		// Remove sensitive information from memory
-		\Sodium\memzero($crypto_key);
-		\Sodium\memzero($data);
+		sodium_memzero($crypto_key);
+		sodium_memzero($data);
 
 		$key = $this->storeEncrypted(
-			\Sodium\bin2hex($ciphertext),
-			\Sodium\bin2hex($nonce),
-			\Sodium\bin2hex($salt),
+			sodium_bin2hex($ciphertext),
+			sodium_bin2hex($nonce),
+			sodium_bin2hex($salt),
 			(int) $expiry
 		);
 
@@ -144,16 +144,16 @@ class SecretQuickie
 		}
 
 		// decode data
-		$data = array_map('\Sodium\hex2bin', $data);
+		$data = array_map('sodium_hex2bin', $data);
 
 		// Derivating a key from password
 		$crypto_key = $this->getCryptoKey($password, $data['salt']);
-		
+
 		// Decrypt data
-		$data = \Sodium\crypto_secretbox_open($data['text'], $data['nonce'], $crypto_key);
+		$data = sodium_crypto_secretbox_open($data['text'], $data['nonce'], $crypto_key);
 
 		// Remove sensitive information from memory
-		\Sodium\memzero($crypto_key);
+		sodium_memzero($crypto_key);
 
 		// Delete secret if password was correct
 		if ($data !== false)
@@ -212,7 +212,7 @@ class SecretQuickie
 
 		// Fetch key from APCu
 		$data = apcu_fetch(APCU_PREFIX . $key);
-		
+
 		if ($delete)
 		{
 			apcu_delete(APCU_PREFIX . $key);
