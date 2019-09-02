@@ -2,7 +2,7 @@
 
 namespace SecretQuickie;
 
-use \KD2\Security;
+use \KD2\Form;
 
 require __DIR__ . '/../bootstrap.php';
 
@@ -13,7 +13,7 @@ if (!empty($_GET['get']))
 	$key = $_GET['get'];
 
 	// Retrieve and burn the secret for javascript XHR
-	if (Security::tokenCheck('view_js_' . $key))
+	if (Form::tokenCheck('view_js_' . $key))
 	{
 		$data = $sq->retrieveEncrypted($key);
 	}
@@ -35,10 +35,10 @@ else if ($secret = $sq->findSecretInURL())
 	}
 
 	// Confirm you want to burn the secret
-	if (!Security::tokenCheck('view_' . $key) && $password)
+	if (!Form::tokenCheck('view_' . $key) && $password)
 	{
 		$tpl->assign('url', APP_URL . '?' . $key . '&' . $password);
-		$tpl->assign('token', Security::tokenHTML('view_' . $key));
+		$tpl->assign('token', Form::tokenHTML('view_' . $key));
 		$tpl->assign('password', (bool) $password);
 		$tpl->display('confirm.tpl');
 	}
@@ -50,8 +50,8 @@ else if ($secret = $sq->findSecretInURL())
 	}
 	else
 	{
-		$tpl->assign('token_js', Security::tokenHTML('view_js_' . $key));
-		$tpl->assign('token', Security::tokenHTML('view_' . $key));
+		$tpl->assign('token_js', Form::tokenHTML('view_js_' . $key));
+		$tpl->assign('token', Form::tokenHTML('view_' . $key));
 		$tpl->assign('secret_key', $key);
 		$tpl->display('secret_js.tpl');
 	}

@@ -2,13 +2,13 @@
 
 namespace SecretQuickie;
 
-use \KD2\Security;
+use \KD2\Form;
 
 require __DIR__ . '/../../bootstrap.php';
 
 function is_posting($api = false)
 {
-	if (!Security::tokenCheck('post'))
+	if (!Form::tokenCheck('post'))
 	{
 		return false;
 	}
@@ -53,7 +53,7 @@ if (!empty($_GET['js']))
 	exit;
 }
 
-if (!empty($_POST['post']) && !empty($_POST['secret']) && Security::tokenCheck('post'))
+if (!empty($_POST['post']) && !empty($_POST['secret']) && Form::tokenCheck('post'))
 {
 	$data = isset($_POST['secret']) ? $_POST['secret'] : null;
 	$password = !empty($_POST['password']) ? $_POST['password'] : null;
@@ -76,5 +76,5 @@ $expire_table = [
 
 $tpl->assign('expire_table', $expire_table);
 
-$tpl->assign('token', Security::tokenHTML('post'));
+$tpl->assign('token', Form::tokenHTML('post'));
 $tpl->display('post.tpl');

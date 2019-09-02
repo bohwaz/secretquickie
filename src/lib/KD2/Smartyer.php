@@ -1,29 +1,22 @@
 <?php
 /*
-  Part of the KD2 framework collection of tools: http://dev.kd2.org/
-  
-  Copyright (c) 2001-2016 BohwaZ <http://bohwaz.net/>
-  All rights reserved.
-  
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-  1. Redistributions of source code must retain the above copyright notice,
-  this list of conditions and the following disclaimer.
-  2. Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-  
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-  THE POSSIBILITY OF SUCH DAMAGE.
+	This file is part of KD2FW -- <http://dev.kd2.org/>
+
+	Copyright (c) 2001-2019 BohwaZ <http://bohwaz.net/>
+	All rights reserved.
+
+	KD2FW is free software: you can redistribute it and/or modify
+	it under the terms of the GNU Affero General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Foobar is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU Affero General Public License for more details.
+
+	You should have received a copy of the GNU Affero General Public License
+	along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /**
@@ -69,22 +62,27 @@ class Smartyer
 	protected $delimiter_end = '}';
 
 	/**
-	 * Current template path
+	 * Current template file name / path
+	 */
+	protected $template;
+
+	/**
+	 * Current template complete path (includes ->root_dir)
 	 * @var string
 	 */
-	protected $template_path = null;
+	protected $template_path;
 
 	/**
 	 * Current compiled template path
 	 * @var string
 	 */
-	protected $compiled_template_path = null;
+	protected $compiled_template_path;
 
 	/**
 	 * Content of the template source while compiling
 	 * @var string
 	 */
-	protected $source = null;
+	protected $source;
 
 	/**
 	 * Variables assigned to the template
@@ -96,7 +94,9 @@ class Smartyer
 	 * Functions registered to the template
 	 * @var array
 	 */
-	protected $functions = [];
+	protected $functions = [
+		'assign' => [__CLASS__, 'templateAssign'],
+	];
 
 	/**
 	 * Block functions registered to the template
@@ -134,15 +134,15 @@ class Smartyer
 	 * Auto-escaping type (any type accepted by self::escape())
 	 * @var string
 	 */
-	protected $escape_type = null;
+	protected $escape_type;
 
 	/**
 	 * List of native PHP tags that don't require any argument
-	 * 
+	 *
 	 * Note: switch/case is not supported because any white space
 	 * between switch and the first case will produce and error
 	 * see https://secure.php.net/manual/en/control-structures.alternative-syntax.php
-	 * 
+	 *
 	 * @var array
 	 */
 	protected $raw_php_blocks = ['elseif', 'if', 'else', 'for', 'while'];
@@ -166,20 +166,41 @@ class Smartyer
 	public $error_on_invalid_block = true;
 
 	/**
-	 * Global parent path to templates
+	 * Default namespace used in templates
 	 * @var string
 	 */
-	static protected $cache_dir = null;
+	protected $namespace;
 
 	/**
-	 * Directory used for storing the compiled templates
+	 * Global parent path to compiled code
+	 * @var string
+	 * * @deprecated FIXME remove
+	 */
+	static protected $legacy_cache_dir = null;
+
+	/**
+	 * Global parent path to existing templates
+	 * @var string
+	 * @deprecated FIXME remove
+	 */
+	static protected $legacy_templates_dir = null;
+
+	/**
+	 * Directory used to store the compiled code
 	 * @var string
 	 */
-	static protected $templates_dir = null;
+	protected $compiled_dir;
+
+	/**
+	 * Root directory to child templates
+	 * @var string
+	 */
+	protected $templates_dir;
 
 	/**
 	 * Sets the path where compiled templates will be stored
 	 * @param string $path
+	 * @deprecated FIXME remove this method; use Smartyer->setCompiledDir
 	 */
 	static public function setCompileDir($path)
 	{
@@ -193,12 +214,13 @@ class Smartyer
 			throw new \RuntimeException($path . ' is not writeable by ' . __CLASS__);
 		}
 
-		self::$cache_dir = $path;
+		self::$legacy_cache_dir = $path;
 	}
 
 	/**
 	 * Sets the parent path containing all templates
 	 * @param string $path
+	 * @deprecated FIXME remove this method; use Smartyer->setTemplatesDir
 	 */
 	static public function setTemplateDir($path)
 	{
@@ -212,7 +234,54 @@ class Smartyer
 			throw new \RuntimeException($path . ' is not readable by ' . __CLASS__);
 		}
 
-		self::$templates_dir = $path;
+		self::$legacy_templates_dir = $path;
+	}
+
+	/**
+	 * Sets the path where compiled templates will be stored
+	 * @param string $path
+	 */
+	public function setCompiledDir($path)
+	{
+		if (!is_dir($path))
+		{
+			throw new \RuntimeException($path . ' is not a directory.');
+		}
+
+		if (!is_writable($path))
+		{
+			throw new \RuntimeException($path . ' is not writeable by ' . __CLASS__);
+		}
+
+		$this->compiled_dir = $path;
+	}
+
+	/**
+	 * Sets the default path containing all templates
+	 * @param string $path
+	 */
+	public function setTemplatesDir($path)
+	{
+		if (!is_dir($path))
+		{
+			throw new \RuntimeException($path . ' is not a directory.');
+		}
+
+		if (!is_readable($path))
+		{
+			throw new \RuntimeException($path . ' is not readable by ' . __CLASS__);
+		}
+
+		$this->templates_dir = $path;
+	}
+
+	/**
+	 * Sets the namespace used by the template code
+	 * @param string $namespace
+	 */
+	public function setNamespace($namespace)
+	{
+		$this->namespace = $namespace;
 	}
 
 	/**
@@ -223,23 +292,23 @@ class Smartyer
 	 */
 	public function __construct($template = null, Smartyer &$parent = null)
 	{
-		if (is_null(self::$cache_dir))
-		{
-			throw new \LogicException('Compile dir not set: call ' . __CLASS__ . '::setCompileDir() first');
-		}
-
-		$this->template_path = !is_null($template) ? self::$templates_dir . DIRECTORY_SEPARATOR . $template : null;
-		$this->compiled_template_path = self::$cache_dir . DIRECTORY_SEPARATOR . sha1($template) . '.phptpl';
+		$this->template = $template;
 
 		// Register parent functions and variables locally
 		if ($parent instanceof Smartyer)
 		{
-			$copy = ['modifiers', 'blocks', 'functions', 'variables', 'escape_type', 'compile_functions'];
+			$copy = ['modifiers', 'blocks', 'functions', 'variables', 'escape_type', 'compile_functions', 'namespace', 'compiled_dir', 'templates_dir'];
 
 			foreach ($copy as $key)
 			{
 				$this->{$key} = $parent->{$key};
 			}
+		}
+		else
+		{
+			// FIXME remove deprecated global set
+			$this->templates_dir = self::$legacy_templates_dir;
+			$this->compiled_dir = self::$legacy_cache_dir;
 		}
 	}
 
@@ -252,7 +321,6 @@ class Smartyer
 	{
 		$s = new Smartyer(null, $parent);
 		$s->source = $string;
-		$s->compiled_template_path = self::$cache_dir . DIRECTORY_SEPARATOR . sha1($string) . '.phptpl';
 		return $s;
 	}
 
@@ -282,6 +350,41 @@ class Smartyer
 			return (new Smartyer($template, $this))->fetch();
 		}
 
+		if (is_null($this->compiled_dir))
+		{
+			throw new \LogicException('Compile dir not set: call ' . __CLASS__ . '->setCompiledDir() first');
+		}
+
+		if (!is_null($this->template))
+		{
+			// Don't prepend templates_dir for phar and absolute paths
+			if (substr($this->template, 0, 7) == 'phar://' || $this->template[0] == '/')
+			{
+				$this->template_path = $this->template;
+			}
+			else
+			{
+				$this->template_path = $this->templates_dir . DIRECTORY_SEPARATOR . $this->template;
+			}
+		}
+
+		if (!is_null($this->template_path) && (!is_file($this->template_path) || !is_readable($this->template_path)))
+		{
+			throw new \RuntimeException('Template file doesn\'t exist or is not readable: ' . $this->template_path);
+		}
+
+		if (is_null($this->template_path))
+		{
+			// Anonymous templates
+			$hash = sha1($this->source . $this->namespace);
+		}
+		else
+		{
+			$hash = sha1($this->template_path . $this->namespace);
+		}
+
+		$this->compiled_template_path = $this->compiled_dir . DIRECTORY_SEPARATOR . $hash . '.tpl.php';
+
 		$time = @filemtime($this->compiled_template_path);
 
 		if (!$time || (!is_null($this->template_path) && filemtime($this->template_path) > $time))
@@ -294,7 +397,7 @@ class Smartyer
 		ob_start();
 
 		include $this->compiled_template_path;
-		
+
 		return ob_get_clean();
 	}
 
@@ -303,16 +406,11 @@ class Smartyer
 	 * @param  string $path Path to templates dir
 	 * @return void
 	 */
-	static public function precompileAll($templates_dir = null)
+	static public function precompileAll($templates_dir)
 	{
-		if (is_null($templates_dir))
+		if (!is_dir($templates_dir))
 		{
-			$templates_dir = self::$templates_dir;
-
-			if (is_null($templates_dir))
-			{
-				throw new \Exception('No template directory specified.');
-			}
+			throw new \RuntimeException('The template directory specified is not a directory: ' . $templates_dir);
 		}
 
 		$dir = dir($templates_dir);
@@ -332,7 +430,7 @@ class Smartyer
 				self::precompileAll($file_path);
 			}
 
-			$tpl = new Smartyer(substr($file_path, strpos($file_path, $templates_dir)), $this);
+			$tpl = new Smartyer(substr($file_path, strpos($file_path, $templates_dir)));
 			$tpl->compile();
 		}
 	}
@@ -382,6 +480,28 @@ class Smartyer
 	}
 
 	/**
+	 * Return assigned variables
+	 * @param  string|null $name name of the variable, if NULL then all variables are returned
+	 * @return mixed
+	 */
+	public function getTemplateVars($name = null)
+	{
+		if (!is_null($name))
+		{
+			if (array_key_exists($name, $this->variables))
+			{
+				return $this->variables[$name];
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		return $this->variables;
+	}
+
+	/**
 	 * Register a modifier function to the current template
 	 * @param  string|array  $name     Modifier name or associative array of multiple modifiers
 	 * @param  Callable|null $callback Valid callback if $name is a string
@@ -409,7 +529,7 @@ class Smartyer
 	 * @param  Callable|null $callback Valid callback if $name is a string
 	 * @return Smartyer
 	 */
-	public function register_function($name, Callable $callback)
+	public function register_function($name, Callable $callback = null)
 	{
 		if (is_array($name))
 		{
@@ -431,7 +551,7 @@ class Smartyer
 	 * @param  Callable|null $callback Valid callback if $name is a string
 	 * @return Smartyer
 	 */
-	public function register_block($name, Callable $callback)
+	public function register_block($name, Callable $callback = null)
 	{
 		if (is_array($name))
 		{
@@ -491,9 +611,23 @@ class Smartyer
 		// Force new lines (this is to avoid PHP eating new lines after its closing tag)
 		$compiled = preg_replace("/\?>\n/", "$0\n", $compiled);
 
-		$compiled = '<?php /* Compiled from ' . $this->template_path . ' - ' . gmdate('Y-m-d H:i:s') . ' UTC */ '
-			. 'if (!isset($_i)) { $_i = []; } if (!isset($_blocks)) { $_blocks = []; } ?>'
-			. $compiled;
+		// Keep a trace of the source for debug purposes
+		$prefix = '<?php /* Compiled from ' . $this->template_path . ' - ' . gmdate('Y-m-d H:i:s') . ' UTC */ ';
+
+		// Apply namespace
+		if ($this->namespace)
+		{
+			$prefix .= sprintf("\nnamespace %s;\n", $this->namespace);
+		}
+
+		// Stop execution if not in the context of Smartyer
+		// this is to avoid potential execution of template code outside of Smartyer
+		$prefix .= 'if (!isset($this) || !is_object($this) || (!($this instanceof \KD2\Smartyer) && !is_subclass_of($this, \'\KD2\Smartyer\', true))) { die("Wrong call context."); } ';
+
+		// Initialize useful variables
+		$prefix .= 'if (!isset($_i)) { $_i = []; } if (!isset($_blocks)) { $_blocks = []; } ?>';
+
+		$compiled = $prefix . $compiled;
 
 		// Write to temporary file
 		file_put_contents($this->compiled_template_path . '.tmp', $compiled);
@@ -523,7 +657,7 @@ class Smartyer
 			$compiled = explode("\n", $compiled);
 			$compiled = array_slice($compiled, $e->getLine()-1);
 			$compiled = implode("\n", $compiled);
-			
+
 			if (preg_match('!//#(\d+)\?>!', $compiled, $match))
 			{
 				$this->parseError($match[1], $e->getMessage(), $e);
@@ -550,19 +684,37 @@ class Smartyer
 	 */
 	protected function parse($source)
 	{
+		$literals = [];
+
+		$pattern = sprintf('/%s\*.*?\*%2$s|<\?(?:php|=).*?\?>|%1$sliteral%2$s.*?%1$s\/literal%2$s/s',
+			preg_quote($this->delimiter_start), preg_quote($this->delimiter_end));
+
+		// Remove literal blocks, PHP blocks and comments, to avoid interference with block parsing
+		$source = preg_replace_callback($pattern, function ($match) use (&$literals) {
+			$nb = count($literals);
+			$literals[$nb] = $match[0];
+			$lines = substr_count($match[0], "\n");
+			return '<?php/*#' . $nb . '#' . str_repeat("\n", $lines) . '#*/?>';
+		}, $source);
+
+		// Create block matching pattern
 		$anti = preg_quote($this->delimiter_start . $this->delimiter_end, '#');
 		$pattern = '#' . preg_quote($this->delimiter_start, '#') . '((?:[^' . $anti . ']|(?R))*?)' . preg_quote($this->delimiter_end, '#') . '#i';
 
-		$source = preg_split($pattern, $source, 0, PREG_SPLIT_OFFSET_CAPTURE | PREG_SPLIT_DELIM_CAPTURE);
+		$blocks = preg_split($pattern, $source, 0, PREG_SPLIT_OFFSET_CAPTURE | PREG_SPLIT_DELIM_CAPTURE);
 
 		unset($anti, $pattern);
 
 		$compiled = '';
-		$literal = false;
+		$prev_pos = 0;
+		$line = 1;
 
-		foreach ($source as $i=>$block)
+		foreach ($blocks as $i=>$block)
 		{
 			$pos = $block[1];
+			$line += $pos && $pos < strlen($source) ? substr_count($source, "\n", $prev_pos, $pos - $prev_pos) : 0;
+			$prev_pos = $pos;
+
 			$block = $block[0];
 			$tblock = trim($block);
 
@@ -572,13 +724,8 @@ class Smartyer
 				continue;
 			}
 
-			// Comments
-			if ($block[0] == '*' && substr($block, -1) == '*')
-			{
-				continue;
-			}
 			// Avoid matching JS blocks and others
-			elseif ($tblock == 'ldelim')
+			if ($tblock == 'ldelim')
 			{
 				$compiled .= $this->delimiter_start;
 			}
@@ -586,29 +733,17 @@ class Smartyer
 			{
 				$compiled .= $this->delimiter_end;
 			}
-			elseif ($tblock == 'literal')
-			{
-				$literal = true;
-			}
-			elseif ($tblock == '/literal')
-			{
-				$literal = false;
-			}
-			elseif ($literal)
-			{
-				$compiled .= $this->delimiter_start . $block . $this->delimiter_end;
-			}
 			// Closing blocks
 			elseif ($tblock[0] == '/')
 			{
-				$compiled .= $this->parseClosing($pos, $tblock);
+				$compiled .= $this->parseClosing($line, $tblock);
 			}
 			// Variables and strings
 			elseif ($tblock[0] == '$' || $tblock[0] == '"' || $tblock[0] == "'")
 			{
-				$compiled .= $this->parseVariable($pos, $tblock);
+				$compiled .= $this->parseVariable($line, $tblock);
 			}
-			elseif ($code = $this->parseBlock($pos, $tblock))
+			elseif ($code = $this->parseBlock($line, $tblock))
 			{
 				$compiled .= $code;
 			}
@@ -619,7 +754,36 @@ class Smartyer
 			}
 		}
 
-		unset($literal, $source, $i, $block, $tblock, $pos);
+		unset($source, $i, $block, $tblock, $pos, $prev_pos, $line);
+
+		// Include removed literals, PHP blocks etc.
+		foreach ($literals as $i=>$literal)
+		{
+			// Not PHP code: specific treatment
+			if ($literal[0] != '<')
+			{
+				// Comments
+				if (strpos($literal, $this->delimiter_start . '*') === 0)
+				{
+					// Remove
+					$literal = '';
+				}
+				// literals
+				else
+				{
+					$start_tag = $this->delimiter_start . 'literal' . $this->delimiter_end;
+					$end_tag = $this->delimiter_start . '/literal' . $this->delimiter_end;
+					$literal = substr($literal, strlen($start_tag), -(strlen($end_tag)));
+					unset($start_tag, $end_tag);
+				}
+			}
+			else
+			{
+				// PHP code, leave as is
+			}
+
+			$compiled = preg_replace('/<\?php\/\*#' . $i . '#\s*?#\*\/\?>/', $literal, $compiled);
+		}
 
 		return $compiled;
 	}
@@ -627,7 +791,7 @@ class Smartyer
 	/**
 	 * Parse smarty blocks and functions and returns PHP code
 	 */
-	protected function parseBlock($pos, $block)
+	protected function parseBlock($line, $block)
 	{
 		// This is not a valid Smarty block, just assume it is PHP and reject any problem on the user
 		if (!preg_match('/^(else if|.*?)(?:\s+(.+?))?$/s', $block, $match))
@@ -648,7 +812,7 @@ class Smartyer
 		}
 
 		// Start counter
-		if ($name == 'foreach')
+		if ($name == 'foreach' || $name == 'for' || $name == 'while')
 		{
 			$code = '$_i[] = 0; ';
 		}
@@ -657,7 +821,20 @@ class Smartyer
 		if ($raw_args[0] == '(' && substr($raw_args, -1) == ')')
 		{
 			$raw_args = $this->parseMagicVariables($raw_args);
-			$code .= $name . $raw_args . ':';
+
+			// Make sure the arguments for if/elseif are wrapped in parenthesis
+			// as it could be a false positive
+			// eg. "if ($a == 1) || ($b == 1)" would create an error
+			// this is not valid for other blocks though (foreach/for/while)
+
+			if ($name == 'if' || $name == 'elseif')
+			{
+				$code .= sprintf('%s (%s):', $name, $raw_args);
+			}
+			else
+			{
+				$code .= sprintf('%s %s:', $name, $raw_args);
+			}
 		}
 		// Raw PHP tags with no enclosing bracket: enclose it in brackets if needed
 		elseif (in_array($name, $this->raw_php_blocks))
@@ -668,7 +845,7 @@ class Smartyer
 			}
 			elseif ($raw_args === '')
 			{
-				$this->parseError($pos, 'Invalid block {' . $name . '}: no arguments supplied');
+				$this->parseError($line, 'Invalid block {' . $name . '}: no arguments supplied');
 			}
 			else
 			{
@@ -680,7 +857,7 @@ class Smartyer
 		elseif ($name == 'foreach')
 		{
 			array_push($this->foreachelse_stack, false);
-			$args = $this->parseArguments($raw_args, $pos);
+			$args = $this->parseArguments($raw_args, $line);
 
 			$args['key'] = isset($args['key']) ? $this->getValueFromArgument($args['key']) : null;
 			$args['item'] = isset($args['item']) ? $this->getValueFromArgument($args['item']) : null;
@@ -688,12 +865,12 @@ class Smartyer
 
 			if (empty($args['item']))
 			{
-				$this->parseError($pos, 'Invalid foreach call: item parameter required.');
+				$this->parseError($line, 'Invalid foreach call: item parameter required.');
 			}
 
 			if (empty($args['from']))
 			{
-				$this->parseError($pos, 'Invalid foreach call: from parameter required.');
+				$this->parseError($line, 'Invalid foreach call: from parameter required.');
 			}
 
 			$key = $args['key'] ? '$' . $args['key'] . ' => ' : '';
@@ -709,11 +886,11 @@ class Smartyer
 		}
 		elseif ($name == 'include')
 		{
-			$args = $this->parseArguments($raw_args, $pos);
+			$args = $this->parseArguments($raw_args, $line);
 
 			if (empty($args['file']))
 			{
-				throw new Smartyer_Exception($pos, '{include} function requires file parameter.');
+				$this->parseError($line, '{include} function requires file parameter.');
 			}
 
 			$file = $this->exportArgument($args['file']);
@@ -721,11 +898,11 @@ class Smartyer
 
 			if (count($args) > 0)
 			{
-				$assign = '$_s->assign(' . $this->exportArguments($args) . ');';
+				$assign = '$_s->assign(array_merge(get_defined_vars(), ' . $this->exportArguments($args) . '));';
 			}
 			else
 			{
-				$assign = '';
+				$assign = '$_s->assign(get_defined_vars());';
 			}
 
 			$code = '$_s = new \KD2\Smartyer(' . $file . ', $this); ' . $assign . ' $_s->display(); unset($_s);';
@@ -740,28 +917,28 @@ class Smartyer
 			elseif (array_key_exists($name, $this->functions))
 			{
 				$args = $this->parseArguments($raw_args);
-				$code = 'echo $this->functions[' . var_export($name, true) . '](' . $this->exportArguments($args) . ');';
+				$code = 'echo $this->functions[' . var_export($name, true) . '](' . $this->exportArguments($args) . ', $this);';
 			}
 			else
 			{
 				// Let's try the user-defined compile callbacks
 				// and if none of them return something, we are out
-				
+
 				foreach ($this->compile_functions as $closure)
 				{
-					$code = call_user_func($closure, $pos, $block, $name, $raw_args);
+					$code = call_user_func($closure, $line, $block, $name, $raw_args);
 
 					if ($code)
 					{
 						break;
 					}
 				}
-			
+
 				if (!$code)
 				{
 					if ($this->error_on_invalid_block)
 					{
-						$this->parseError($pos, 'Unknown function or block: ' . $name);
+						$this->parseError($line, 'Unknown function or block: ' . $name);
 					}
 					else
 					{
@@ -772,15 +949,15 @@ class Smartyer
 			}
 		}
 
-		if ($name == 'foreach')
+		if ($name == 'foreach' || $name == 'for' || $name == 'while')
 		{
 			// Iteration counter
 			$code .= ' $iteration =& $_i[count($_i)-1]; $iteration++;';
 		}
 
-		$code = '<?php ' . $code . ' //#' . $pos . '?>';
+		$code = '<?php ' . $code . ' //#' . $line . '?>';
 
-		unset($args, $name, $pos, $raw_args, $args, $block, $file);
+		unset($args, $name, $line, $raw_args, $args, $block, $file);
 
 		return $code;
 	}
@@ -788,7 +965,7 @@ class Smartyer
 	/**
 	 * Parse closing blocks and returns PHP code
 	 */
-	protected function parseClosing($pos, $block)
+	protected function parseClosing($line, $block)
 	{
 		$code = '';
 		$name = trim(substr($block, 1));
@@ -804,7 +981,7 @@ class Smartyer
 					$name = 'if';
 				}
 
-				$code .= ' array_pop($_i);';
+				$code .= ' array_pop($_i); unset($iteration);';
 			case 'if':
 				$code = 'end' . $name . ';' . $code;
 				break;
@@ -816,27 +993,27 @@ class Smartyer
 				}
 				else
 				{
-					$this->parseError($pos, 'Unknown closing block: ' . $name);
+					$this->parseError($line, 'Unknown closing block: ' . $name);
 				}
 				break;
 			}
 		}
 
-		$code = '<?php ' . $code . ' //#' . $pos . '?>';
-		
-		unset($name, $pos, $block);
-		
+		$code = '<?php ' . $code . ' //#' . $line . '?>';
+
+		unset($name, $line, $block);
+
 		return $code;
 	}
 
 	/**
 	 * Parse a Smarty variable and returns a PHP code
 	 */
-	protected function parseVariable($pos, $block)
+	protected function parseVariable($line, $block)
 	{
-		$code = 'echo ' . $this->parseSingleVariable($block, $pos) . ';';
-		$code = '<?php ' . $code . ' //#' . $pos . '?>';
-			
+		$code = 'echo ' . $this->parseSingleVariable($block, $line) . ';';
+		$code = '<?php ' . $code . ' //#' . $line . '?>';
+
 		return $code;
 	}
 
@@ -855,24 +1032,23 @@ class Smartyer
 
 	/**
 	 * Throws an exception for the current template and hopefully giving the right line
-	 * @param  integer $position Caret position in source code
+	 * @param  integer $line Source line
 	 * @param  string $message  Error message
-	 * @param  Exception $previous Previous exception for the stack
+	 * @param  \Exception $previous Previous exception for the stack
 	 * @throws Smartyer_Exception
 	 */
-	protected function parseError($position, $message, $previous = null)
+	protected function parseError($line, $message, $previous = null)
 	{
-		$line = substr_count($this->source, "\n", 0, $position) + 1;
 		throw new Smartyer_Exception($message, $this->template_path, $line, $previous);
 	}
 
 	/**
 	 * Parse block arguments, this is similar to parsing HTML arguments
 	 * @param  string $str List of arguments
-	 * @param  integer $pos Caret position in source code
+	 * @param  integer $line Source code line
 	 * @return array
 	 */
-	protected function parseArguments($str, $pos = null)
+	protected function parseArguments($str, $line = null)
 	{
 		$args = [];
 		$state = 0;
@@ -890,17 +1066,17 @@ class Smartyer
 			{
 				if ($value != '=')
 				{
-					$this->parseError($pos, 'Expecting \'=\' after \'' . $last_value . '\'');
+					$this->parseError($line, 'Expecting \'=\' after \'' . $last_value . '\'');
 				}
 			}
 			elseif ($state == 2)
 			{
 				if ($value == '=')
 				{
-					$this->parseError($pos, 'Unexpected \'=\' after \'' . $last_value . '\'');
+					$this->parseError($line, 'Unexpected \'=\' after \'' . $last_value . '\'');
 				}
 
-				$args[$name] = $this->parseSingleVariable($value, $pos, false);
+				$args[$name] = $this->parseSingleVariable($value, $line, false);
 				$name = null;
 				$state = -1;
 			}
@@ -932,11 +1108,11 @@ class Smartyer
 	/**
 	 * Parse a variable, either from a {$block} or from an argument: {block arg=$bla|rot13}
 	 * @param  string  $str     Variable string
-	 * @param  integer $tpl_pos Character position in the source
+	 * @param  integer $line    Line position in the source
 	 * @param  boolean $escape  Auto-escape the variable output?
 	 * @return string 			PHP code to return the variable
 	 */
-	protected function parseSingleVariable($str, $tpl_pos = null, $escape = true)
+	protected function parseSingleVariable($str, $line = null, $escape = true)
 	{
 		// Split by pipe (|) except if enclosed in quotes
 		$modifiers = preg_split('/\|(?=(([^\'"]*["\']){2})*[^\'"]*$)/', $str);
@@ -1000,7 +1176,7 @@ class Smartyer
 			// Modifiers MUST be registered at compile time
 			if (!array_key_exists($mod_name, $this->modifiers))
 			{
-				$this->parseError($tpl_pos, 'Unknown modifier name: ' . $mod_name);
+				$this->parseError($line, 'Unknown modifier name: ' . $mod_name);
 			}
 
 			$post = $_post . ')' . $post;
@@ -1008,7 +1184,7 @@ class Smartyer
 		}
 
 		$var = $pre . $this->parseMagicVariables($var) . $post;
-		
+
 		unset($pre, $post, $arguments, $mod_name, $modifier, $modifiers, $pos, $_post);
 
 		// auto escape
@@ -1025,7 +1201,7 @@ class Smartyer
 	 *
 	 * Quoted strings will be escaped, variables and true/false/null left as is,
 	 * but unquoted strings containing [\w\d_-] will be quoted and escaped
-	 * 
+	 *
 	 * @param  string $str 	String to export
 	 * @return string 		PHP escaped string
 	 */
@@ -1053,7 +1229,7 @@ class Smartyer
 	 * Export an array to a string, like var_export but without escaping of strings
 	 *
 	 * This is used to reference variables and code in arrays
-	 * 
+	 *
 	 * @param  array   $args      Arguments to export
 	 * @return string
 	 */
@@ -1079,8 +1255,16 @@ class Smartyer
 	 */
 	protected function _magicVar($var, array $keys)
 	{
+		$i = 0;
+
 		while ($key = array_shift($keys))
 		{
+			if ($i++ > 20)
+			{
+				// Limit the amount of recusivity we can go through
+				return null;
+			}
+
 			if (is_object($var))
 			{
 				// Test for constants
@@ -1089,11 +1273,11 @@ class Smartyer
 					return constant(get_class($var) . '::' . $key);
 				}
 
-				if (!property_exists($var, $key))
+				if (!isset($var->$key))
 				{
 					return null;
 				}
-				
+
 				$var = $var->$key;
 			}
 			elseif (is_array($var))
@@ -1115,10 +1299,17 @@ class Smartyer
 	 */
 	static protected function escape($str, $type = 'html')
 	{
-		if (is_array($str) || is_object($str))
+		if ($type == 'json')
+		{
+			$str = json_encode($str);
+		}
+
+		if (is_array($str) || (is_object($str) && !method_exists($str, '__toString')))
 		{
 			throw new \InvalidArgumentException('Invalid argument type for escape modifier: ' . gettype($str));
 		}
+
+		$str = (string) $str;
 
 		switch ($type)
 		{
@@ -1140,12 +1331,12 @@ class Smartyer
 				}, $str);
 			case 'hexentity':
 				return preg_replace_callback('/./', function ($match) {
-					return '&#x' . ord($match[0]) . ';';
+					return '&#' . ord($match[0]) . ';';
 				}, $str);
 			case 'mail':
 				return str_replace('.', '[dot]', $str);
 			case 'json':
-				return json_encode($str);
+				return $str;
 			case 'js':
 			case 'javascript':
 				return strtr($str, [
@@ -1186,17 +1377,21 @@ class Smartyer
 		$u = preg_match('//u', $str) ? 'u' : '';
 
 		// Shorter than $length + 1
-		if (!preg_match('/^.{' . ((int)$length + 1) . '}/' . $u, $str))
+		if (!preg_match('/^.{' . ((int)$length + 1) . '}/s' . $u, $str))
 		{
 			return $str;
 		}
 
 		// Cut at 80 characters
-		$str = preg_replace('/^(.{' . (int)$length . '}).*$/' . $u, '$1', $str);
+		$str = preg_replace('/^(.{0,' . (int)$length . '}).*$/s' . $u, '$1', $str);
 
 		if (!$strict_cut)
 		{
-			$str = preg_replace('/([\s.,:;!?]).*?$/' . $u, '$1', $str);
+			$cut = preg_replace('/[^\s.,:;!?]*?$/s' . $u, '', $str);
+
+			if (trim($cut) == '') {
+				$cut = $str;
+			}
 		}
 
 		return trim($str) . $placeholder;
@@ -1208,7 +1403,11 @@ class Smartyer
 	 */
 	static protected function dateFormat($date, $format = '%b, %e %Y')
 	{
-		if (!is_numeric($date))
+		if (is_object($date))
+		{
+			$date = $date->getTimestamp();
+		}
+		elseif (!is_numeric($date))
 		{
 			$date = strtotime($date);
 		}
@@ -1231,73 +1430,22 @@ class Smartyer
 		return implode('', func_get_args());
 	}
 
-	static protected function pagination($params)
+	/**
+	 * {assign} template function
+	 * @param  array  $args
+	 * @param  object &$tpl Smartyer object
+	 * @return string
+	 */
+	static protected function templateAssign(array $args, &$tpl)
 	{
-		extract($params);
-
-		if (!isset($count) || !isset($current) || !isset($per_page) || !isset($url))
+		// Value can be NULL!
+		if (!isset($args['var']) || !array_key_exists('value', $args))
 		{
-			throw new Smartyer_Exception('Missing parameter count, current or per_page.');
+			throw new \BadFunctionCallException('Missing argument "var" or "value" to function {assign}');
 		}
 
-		if (strpos($url, '%d') === false)
-		{
-			$url .= '%d';
-		}
-
-		$max_page = ceil($count / $per_page);
-
-		// No pagination
-		if ($max_page <= 1)
-		{
-			return '';
-		}
-
-		$links = '<ul class="pagination">';
-
-		if ($current > 1)
-		{
-			$links .= '<li class="prev"><a href="' . sprintf($url, $current - 1) . '">&larr;</a></li>';
-		}
-
-		if ($max_page > 10)
-		{
-			$start = max(1, $current - 4);
-			$end = max($max_page, $start + 9);
-
-			if ($start > 1)
-			{
-				$links .= '<li class="first"><a href="' . sprintf($url, 1) . $url . '">1</a></li>';
-				$links .= '<li class="etc">…</li>';
-			}
-
-			for ($i = $start; $i <= $end; $i++)
-			{
-				$links .= '<li' . ($current == $i ? ' class="current"' : '') . '><a href="' . sprintf($url, $i) . '">' . $i . '</a></li>';
-			}
-
-			if ($end < $max_page)
-			{
-				$links .= '<li class="etc">…</li>';
-				$links .= '<li class="last"><a href="' . sprintf($url, $max_page) . '">' . $max_page . '</a></li>';
-			}
-		}
-		else
-		{
-			for ($i = 1; $i <= $max_page; $i++)
-			{
-				$links .= '<li' . ($current == $i ? ' class="current"' : '') . '><a href="' . sprintf($url, $i) . '">' . $i . '</a></li>';
-			}
-		}
-
-		if ($current < $max_page)
-		{
-			$links .= '<li class="prev"><a href="' . sprintf($url, $current + 1) . '">&larr;</a></li>';
-		}
-
-		$links .= '</ul>';
-
-		return $links;
+		$tpl->assign($args['var'], $args['value']);
+		return '';
 	}
 }
 
@@ -1313,4 +1461,3 @@ class Smartyer_Exception extends \Exception
 		$this->line = $line;
 	}
 }
-
