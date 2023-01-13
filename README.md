@@ -21,7 +21,7 @@ This is similar to what [One Time Secret.com](https://github.com/onetimesecret/o
 
 ## Requirements
 
-* PHP 7.1+
+* PHP 7.1+ (tested up to PHP 8.2)
 * PHP APCu extension
 * PHP libsodium extension
 

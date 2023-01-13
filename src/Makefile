@@ -14,6 +14,9 @@ js_hashes.txt: app/www/static/*.js; @$(value js_hashes)
 test:
 	php -d zend.assertions=1 -d assert.exception=1 -d assert.active=1 -d apc.enable_cli=1 tests/*
 
+dev-server:
+	php -S localhost:8081 -t app/www
+
 .ONESHELL:
 
 .PHONY: test all
