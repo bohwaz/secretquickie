@@ -43,6 +43,7 @@ class ErrorManager
 	 */
 	const PRODUCTION = 1;
 	const DEVELOPMENT = 2;
+	const CLI_DEVELOPMENT = 4;
 
 	/**
 	 * Term colors
@@ -135,7 +136,7 @@ class ErrorManager
 
 		$error = error_get_last();
 
-		if (in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_RECOVERABLE_ERROR, E_USER_ERROR], TRUE))
+		if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE, E_RECOVERABLE_ERROR, E_USER_ERROR], TRUE))
 		{
 			// Don't exit at the end, as there might be other shutdown handlers
 			// after this one
@@ -202,12 +203,14 @@ class ErrorManager
 		try {
 			self::reportException($e, $exit);
 		}
-		catch (\Throwable $e) {
-			echo $e;
+		catch (\Throwable $e2) {
+			echo $e2;
+			echo PHP_EOL . PHP_EOL . $e;
 			exit(1);
 		}
-		catch (\Exception $e) {
-			echo $e;
+		catch (\Exception $e2) {
+			echo $e2;
+			echo PHP_EOL . PHP_EOL . $e;
 			exit(1);
 		}
 
@@ -244,29 +247,14 @@ class ErrorManager
 			}
 		}
 
-		$report = self::makeReport($e);
-		$log = sprintf('=========== Error ref. %s ===========', $report->context->id)
-			. PHP_EOL . PHP_EOL . (string) $e . PHP_EOL . PHP_EOL
-			. '<errorReport>' . PHP_EOL . json_encode($report, \JSON_PRETTY_PRINT)
-			. PHP_EOL . '</errorReport>' . PHP_EOL;
+		extract(self::buildExceptionReport($e, false));
+		unset($e);
 
 		// Log exception to file
-		if (ini_get('error_log'))
+		if (ini_get('log_errors'))
 		{
 			error_log($log);
 		}
-
-		// Log exception to email
-		if (self::$email_errors)
-		{
-			// From: sender
-			$from = !empty($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : basename($report->context->rootDirectory);
-			$msgid = $report->context->id . '@' . $from;
-			$headers = sprintf("From: \"%s\" <%s>\nIn-Reply-To: <%s>\nMessage-Id: <%s>", $from, self::$email_errors, $msgid, $msgid);
-			mail(self::$email_errors, sprintf('Error #%s: %s', $report->context->id, $e->getMessage()), $log, $headers);
-		}
-
-		unset($e);
 
 		// Disable any output if it was buffering
 		if (ob_get_level())
@@ -274,7 +262,18 @@ class ErrorManager
 			ob_end_clean();
 		}
 
-		if (PHP_SAPI == 'cli')
+		$is_curl = 0 === strpos($_SERVER['HTTP_USER_AGENT'] ?? '', 'curl/');
+		$is_cli = PHP_SAPI == 'cli';
+
+		if (!$is_cli) {
+			http_response_code(500);
+		}
+
+		if ($is_curl && !headers_sent()) {
+			header('Content-Type: text/plain; charset=utf-8', true);
+		}
+
+		if (($is_cli || $is_curl) && (self::$enabled & self::DEVELOPMENT || self::$enabled & self::CLI_DEVELOPMENT))
 		{
 			foreach ($report->errors as $e)
 			{
@@ -291,7 +290,7 @@ class ErrorManager
 				foreach ($e->backtrace as $i=>$t)
 				{
 					$file = !empty($t->file) ? $t->file : '[internal function]';
-					$line = $t->line ? '(' . $t->line . ')' : '';
+					$line = !empty($t->line) ? '(' . $t->line . ')' : '';
 
 					if (isset($t->args))
 					{
@@ -316,34 +315,32 @@ class ErrorManager
 				}
 			}
 		}
-		else if (self::$enabled == self::PRODUCTION)
+		else if (($is_cli || $is_curl) && self::$enabled & self::PRODUCTION) {
+			self::termPrint(' /!\\ An internal server error occurred ', self::RED);
+			self::termPrint(' Error reference was: ' . $report->context->id, self::YELLOW);
+		}
+		else if (self::$enabled & self::PRODUCTION)
 		{
 			self::htmlProduction($report);
 		}
 		else
 		{
-			// Display debug
-			echo self::htmlTemplate(ini_get('error_prepend_string'), $report);
-
-			foreach ($report->errors as $e)
-			{
-				self::htmlException($e);
+			if (!headers_sent()) {
+				header_remove();
+				header('Content-Type: text/html; charset=UTF-8', true);
+				header('HTTP/1.1 500 Internal Server Error', true);
 			}
 
-			echo '<section><article><h2>Context</h2><table>';
-
-			foreach ($report->context as $name => $value)
-			{
-				printf('<tr><th>%s</th><td>%s</td></tr>', htmlspecialchars($name), htmlspecialchars($value));
-			}
-
-			echo '</table></article></section>';
-
-			echo self::htmlTemplate(ini_get('error_append_string'), $report);
+			echo $html_report;
 		}
 
-		if (self::$report_auto && self::$report_url)
-		{
+		// Log exception to email
+		if (self::$email_errors) {
+			self::sendEmail($title, $report, $log, $html_report);
+		}
+
+		// Send report to URL
+		if (self::$report_auto && self::$report_url) {
 			self::sendReport($report, self::$report_url);
 		}
 
@@ -353,17 +350,63 @@ class ErrorManager
 		}
 	}
 
+	static public function reportExceptionSilent(\Throwable $e): void
+	{
+		extract(self::buildExceptionReport($e));
+
+		// Log exception to file
+		if (ini_get('log_errors'))
+		{
+			error_log($log);
+		}
+
+		if (self::$email_errors) {
+			self::sendEmail($title, $report, $log, $html_report);
+		}
+	}
+
+	static protected function sendEmail(string $title, \stdClass $report, string $log, string $html): void
+	{
+		// From: sender
+		$from = !empty($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : basename($report->context->root_directory ?? __FILE__);
+		$msgid = $report->context->id . '@' . $from;
+
+		$boundary = sprintf('-----=%s', md5(uniqid(rand())));
+
+		$header = sprintf("MIME-Version: 1.0\r\nFrom: \"%s\" <%s>\r\nIn-Reply-To: <%s>\r\nMessage-Id: <%s>\r\n", $from, self::$email_errors, $msgid, $msgid);
+		$header.= sprintf("Content-Type: multipart/mixed; boundary=\"%s\"\r\n", $boundary);
+		$header.= "\r\n";
+
+		$msg = "This message contains multiple MIME parts.\r\n\r\n";
+		$msg.= sprintf("--%s\r\n", $boundary);
+		$msg.= "Content-Type: text/plain; charset=\"utf-8\"\r\n";
+		$msg.= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+		$msg.= $log . "\r\n\r\n";
+		$msg.= sprintf("--%s\r\n", $boundary);
+		$msg.= "Content-Type: text/html; charset=\"utf-8\"\r\n";
+		$msg.= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+		$msg.= $html . "\r\n\r\n";
+		$msg.= sprintf("--%s--", $boundary);
+
+		mail(self::$email_errors, sprintf('Error #%s: %s', $report->context->id, $title), $msg, $header);
+	}
+
 	/**
 	 * Prints a line to STDERR, eventually using a color
 	 */
 	static public function termPrint($message, $color = null)
 	{
+		if (!defined('\STDERR')) {
+			echo $message . PHP_EOL;
+			return;
+		}
+
 		if ($color && self::$term_color)
 		{
 			$message = chr(27) . $color . $message . chr(27) . "[0m";
 		}
 
-		fwrite(STDERR, $message . PHP_EOL);
+		fwrite(\STDERR, $message . PHP_EOL);
 	}
 
 	/**
@@ -371,12 +414,31 @@ class ErrorManager
 	 */
 	static protected function getFileLocation($file)
 	{
-		if (!empty(self::$context['rootDirectory']) && ($pos = strpos($file, self::$context['rootDirectory'])) === 0)
+		if (!empty(self::$context['root_directory']) && ($pos = strpos($file, self::$context['root_directory'])) === 0)
 		{
-			return '...' . substr($file, strlen(self::$context['rootDirectory']));
+			return '...' . substr($file, strlen(self::$context['root_directory']));
 		}
 
 		return $file;
+	}
+
+	static public function buildExceptionReport(\Throwable $e, bool $force_html = false): array
+	{
+		$report = self::makeReport($e);
+		$log = sprintf('=========== Error ref. %s ===========', $report->context->id)
+			. PHP_EOL . PHP_EOL . (string) $e . PHP_EOL . PHP_EOL
+			. '<errorReport>' . PHP_EOL . json_encode($report, \JSON_PRETTY_PRINT)
+			. PHP_EOL . '</errorReport>' . PHP_EOL;
+
+		$html_report = null;
+
+		if ($force_html || self::$enabled & self::DEVELOPMENT || self::$email_errors) {
+			$html_report = self::htmlReport($report);
+		}
+
+		$title = $e->getMessage();
+
+		return compact('report', 'log', 'html_report', 'title');
 	}
 
 	/**
@@ -388,7 +450,7 @@ class ErrorManager
 			'errors' => [],
 		];
 
-		while ($e)
+		while ($e !== null)
 		{
 			$class = get_class($e);
 
@@ -432,7 +494,7 @@ class ErrorManager
 
 						$params = $r->getParameters();
 					}
-					catch (\Exception $e) {
+					catch (\Exception $_ignore) {
 						$params = [];
 					}
 
@@ -450,9 +512,9 @@ class ErrorManager
 
 						$args[$name] = self::dump($value);
 
-						if (strlen($args[$name]) > 200)
+						if (strlen($args[$name]) > 2000)
 						{
-							$args[$name] = substr($args[$name], 0, 199) . '…';
+							$args[$name] = substr($args[$name], 0, 1999) . '…';
 						}
 					}
 				}
@@ -491,17 +553,27 @@ class ErrorManager
 
 		unset($error, $e, $params, $t);
 
-		$report->context = (object) array_merge([
-			'id'       => base_convert(substr(sha1(json_encode($report->errors)), 0, 10), 16, 36),
-			'date'     => date(DATE_ATOM),
-			'os'       => PHP_OS,
-			'language' => 'PHP ' . PHP_VERSION,
-			'environment' => self::$enabled == self::DEVELOPMENT ? 'development' : 'production:' . self::$enabled,
-			'php_sapi' => PHP_SAPI,
-			'remote_ip'=> isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null,
-			'http_method' => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : null,
-			'files_sent' => self::dump($_FILES),
+		$context = array_merge([
+			'id'           => base_convert(substr(sha1(json_encode($report->errors)), 0, 10), 16, 36),
+			'date'         => date(DATE_ATOM),
+			'os'           => PHP_OS,
+			'language'     => 'PHP ' . PHP_VERSION,
+			'environment'  => self::$enabled & self::DEVELOPMENT ? 'development' : 'production:' . self::$enabled,
+			'php_sapi'     => PHP_SAPI,
+			'remote_ip'    => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null,
+			'http_method'  => isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : null,
+			'http_files'   => self::dump($_FILES),
+			'http_post'    => self::dump($_POST, true),
+			'duration'     => isset(self::$context['request_started']) ? (microtime(true) - self::$context['request_started'])*1000 : null,
+			'memory_peak'  => memory_get_peak_usage(true),
+			'memory_used'  => memory_get_usage(true),
 		], self::$context);
+
+		ksort($context);
+
+		unset($context['request_started']);
+
+		$report->context = (object) $context;
 
 		if (!empty($_SERVER['HTTP_HOST']) && !empty($_SERVER['REQUEST_URI']))
 		{
@@ -515,51 +587,53 @@ class ErrorManager
 	/**
 	 * Displays an exception as HTML debug page
 	 */
-	static public function htmlException(\stdClass $e)
+	static public function htmlException(\stdClass $e): string
 	{
-		printf('<section><header><h1>%s</h1><h2>%s</h2></header>',
-			$e->type, htmlspecialchars($e->message));
+		$out = sprintf('<section><header><h1>%s</h1><h2>%s</h2></header>',
+			$e->type, nl2br(htmlspecialchars($e->message)));
 
 		foreach ($e->backtrace as $i=>$t)
 		{
-			echo '<article>';
+			$out .= '<article>';
 
 			if (isset($t->file) && isset($t->line))
 			{
 				$dir = dirname($t->file);
 				$dir = $dir == '/' ? $dir : $dir . '/';
 
-				printf('<h3>in %s<b>%s</b>:<i>%d</i></h3>', htmlspecialchars($dir), htmlspecialchars(basename($t->file)), $t->line);
+				$out .= sprintf('<h3>in %s<b>%s</b>:<i>%d</i></h3>', htmlspecialchars($dir), htmlspecialchars(basename($t->file)), $t->line);
 			}
 
 			if (isset($t->function))
 			{
-				printf('<h4>&rarr; %s <i>(%d arg.)</i></h4>', htmlspecialchars($t->function), isset($t->args) ? count($t->args) : 0);
+				$out .= sprintf('<h4>&rarr; %s <i>(%d arg.)</i></h4>', htmlspecialchars($t->function), isset($t->args) ? count($t->args) : 0);
 
 				// Display call arguments
 				if (!empty($t->args))
 				{
-					echo '<table>';
+					$out .= '<table>';
 
 					foreach ($t->args as $name => $value)
 					{
-						printf('<tr><th>%s</th><td><pre>%s</pre></td>', htmlspecialchars($name), htmlspecialchars($value));
+						$out .= sprintf('<tr><th>%s</th><td><pre>%s</pre></td>', htmlspecialchars($name), htmlspecialchars($value));
 					}
 
-					echo '</table>';
+					$out .= '</table>';
 				}
 			}
 
 			// Display source code
 			if (isset($t->code) && isset($t->line))
 			{
-				echo self::htmlSource($t->code, $t->line);
+				$out .= self::htmlSource($t->code, $t->line);
 			}
 
-			echo '</article>';
+			$out .= '</article>';
 		}
 
-		echo '</section>';
+		$out .= '</section>';
+
+		return $out;
 	}
 
 
@@ -593,6 +667,10 @@ class ErrorManager
 		$out = [];
 		$start = max(0, $line - 5);
 
+		if (!file_exists($file)) {
+			return [$line => 'Source file not found'];
+		}
+
 		$file = new \SplFileObject($file);
 		$file->seek($start);
 
@@ -614,9 +692,10 @@ class ErrorManager
 
 	static public function htmlProduction(\stdClass $report)
 	{
-		if (!headers_sent())
-		{
+		if (!headers_sent()) {
+			header_remove();
 			header('HTTP/1.1 500 Internal Server Error', true, 500);
+			header('Content-Type: text/html; charset=UTF-8', true);
 		}
 
 		echo self::htmlTemplate(self::$production_error_template, $report);
@@ -627,7 +706,7 @@ class ErrorManager
 		$str = strtr($str, [
 			'{$ref}' => $report->context->id,
 			'{$report_json}' => htmlspecialchars(base64_encode(json_encode($report)), ENT_QUOTES),
-			'{$report_url}' => htmlspecialchars(self::$report_url),
+			'{$report_url}' => htmlspecialchars((string) self::$report_url),
 		]);
 
 		$str = preg_replace_callback('!<if\((sent|logged|report|email|log)\)>(.*?)</if>!is', function ($match) {
@@ -646,9 +725,39 @@ class ErrorManager
 		return $str;
 	}
 
+	static public function htmlReport(\stdClass $report): string
+	{
+		$out = '';
+
+		// Display debug
+		$out .= self::htmlTemplate(ini_get('error_prepend_string'), $report);
+
+		foreach ($report->errors as $e)
+		{
+			$out .= self::htmlException($e);
+		}
+
+		$out .= '<section><article><h2>Context</h2><table>';
+
+		foreach ($report->context as $name => $value)
+		{
+			$out .= sprintf('<tr><th>%s</th><td>%s</td></tr>',
+				htmlspecialchars($name),
+				htmlspecialchars($value ?? ''));
+		}
+
+		$out .= '</table></article></section>';
+
+		$out .= self::htmlTemplate(ini_get('error_append_string'), $report);
+
+		return $out;
+	}
+
 	/**
 	 * Enable error manager
 	 * @param  integer $type Type of error management (ErrorManager::PRODUCTION or ErrorManager::DEVELOPMENT)
+	 * You can also use ErrorManager::PRODUCTION | ErrorManager::CLI_DEVELOPMENT to get error messages in CLI but still hide errors
+	 * on web front-end.
 	 * @return void
 	 */
 	static public function enable($type = self::DEVELOPMENT)
@@ -656,16 +765,19 @@ class ErrorManager
 		if (self::$enabled)
 			return true;
 
+		self::$context['request_started'] = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
+
 		self::$enabled = $type;
 
-		self::$term_color = function_exists('posix_isatty') && @posix_isatty(STDOUT);
+		self::$term_color = function_exists('posix_isatty') && defined('\STDOUT') && @posix_isatty(\STDOUT);
 
 		ini_set('display_errors', false);
 		ini_set('log_errors', false);
 		ini_set('html_errors', false);
-		error_reporting($type == self::DEVELOPMENT ? -1 : E_ALL & ~E_DEPRECATED & ~E_STRICT);
+		ini_set('zend.exception_ignore_args', false); // We want to get the args in exceptions (since PHP 7.4)
+		error_reporting($type & self::DEVELOPMENT ? -1 : E_ALL & ~E_DEPRECATED & ~E_STRICT);
 
-		if ($type == self::DEVELOPMENT && PHP_SAPI != 'cli')
+		if ($type & self::DEVELOPMENT && PHP_SAPI != 'cli')
 		{
 			self::setHtmlHeader('<!DOCTYPE html><meta charset="utf-8" /><style type="text/css">
 			body { font-family: sans-serif; } * { margin: 0; padding: 0; }
@@ -689,18 +801,19 @@ class ErrorManager
 
 		set_error_handler([__CLASS__, 'errorHandler']);
 
-		if ($type == self::DEVELOPMENT)
+		if ($type & self::DEVELOPMENT)
 		{
 			self::startTimer('_global');
 		}
 
 		// Assign default context
 		static $defaults = [
-			'hostname'      => 'SERVER_NAME',
-			'userAgent'     => 'HTTP_USER_AGENT',
-			'userAddr'      => 'REMOTE_ADDR',
-			'remoteAddr'    => 'SERVER_ADDR',
-			'rootDirectory' => 'DOCUMENT_ROOT',
+			'hostname'       => 'SERVER_NAME',
+			'http_user_agent'     => 'HTTP_USER_AGENT',
+			'http_referrer'  => 'HTTP_REFERER',
+			'user_addr'      => 'REMOTE_ADDR',
+			'server_addr'    => 'SERVER_ADDR',
+			'root_directory' => 'DOCUMENT_ROOT',
 		];
 
 		foreach ($defaults as $a => $b)
@@ -786,7 +899,7 @@ class ErrorManager
 	 */
 	static public function setContext(array $context)
 	{
-		self::$context = $context;
+		self::$context = array_merge(self::$context, $context);
 	}
 
 	/**
@@ -835,13 +948,24 @@ class ErrorManager
 		self::$custom_handlers[$class] = $callback;
 	}
 
+	static public function debug(...$vars)
+	{
+		echo '<pre>';
+		foreach ($vars as $var) {
+			echo self::dump($var);
+			echo '<hr />';
+		}
+		echo '</pre>';
+	}
+
 	/**
 	 * Copy of var_dump but returns a string instead of a variable
 	 * @param  mixed  $var   variable to dump
+	 * @param  bool $hide_values Do not return values if set to TRUE
 	 * @param  integer $level Indentation level (internal use)
 	 * @return string
 	 */
-	static public function dump($var, $level = 0)
+	static public function dump($var, $hide_values = false, $level = 0)
 	{
 		if ($level > 20)
 		{
@@ -857,7 +981,7 @@ class ErrorManager
 			case 'double':
 				return 'float(' . $var . ')';
 			case 'string':
-				return 'string(' . strlen($var) . ') "' . $var . '"';
+				return 'string(' . strlen($var) . ') "' . ($hide_values ? '***HIDDEN***' : $var) . '"';
 			case 'NULL':
 				return 'NULL';
 			case 'resource':
@@ -875,11 +999,23 @@ class ErrorManager
 
 				$level++;
 
+				if ($var instanceof \Traversable) {
+					$var2 = [];
+
+					// Iterate as long as we can
+					while (@$var->valid()) {
+						$var2[] = $var->current();
+						$var->next();
+					}
+
+					$var = $var2;
+				}
+
 				foreach ($var as $key=>$value)
 				{
 					$out .= str_repeat(' ', $level * 2);
 					$out .= is_string($key) ? '["' . $key . '"]' : '[' . $key . ']';
-					$out .= '=> ' . self::dump($value, $level) . PHP_EOL;
+					$out .= '=> ' . self::dump($value, $hide_values, $level) . PHP_EOL;
 				}
 
 				$out .= str_repeat(' ', --$level * 2) . '}';
@@ -918,6 +1054,7 @@ class ErrorManager
 
 			$body = curl_exec($ch);
 			$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			curl_close($ch);
 		}
 		else
 		{

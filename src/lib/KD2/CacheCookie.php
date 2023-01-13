@@ -298,7 +298,7 @@ class CacheCookie
             return $content;
         }
 
-        if (!array_key_exists($key, $content))
+        if (!isset($content->$key))
         {
             return null;
         }

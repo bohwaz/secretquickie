@@ -6,6 +6,18 @@ a {
 	transition: color 0.3s, background 0.3s;
 }
 
+nav .brand {
+	float: none;
+	text-align: center;
+	display: block;
+	max-width: unset;
+	font-size: 1.5em;
+	position: unset;
+	top: unset;
+	-webkit-transform: unset;
+	transform: unset;
+}
+
 main {
 	background: #fff;
 	text-align: left;

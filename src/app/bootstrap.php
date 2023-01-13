@@ -118,10 +118,10 @@ if (OPENID_EMAIL_WHITELIST)
 
 // Init template system
 
-Smartyer::setTemplateDir(__DIR__ . '/templates');
-Smartyer::setCompileDir(sys_get_temp_dir());
-
 $tpl = new Smartyer;
+
+$tpl->setTemplatesDir(__DIR__ . '/templates');
+$tpl->setCompiledDir(sys_get_temp_dir());
 
 $tpl->assign('config', $dotenv);
 $tpl->assign('js_hashes', load_js_hashes(__DIR__ . '/../js_hashes.txt'));

@@ -42,6 +42,7 @@ Sodium should be already included in the PHP distribution.
 
 * 0.1.0, initial release, works with PHP 5.6 and 7.0 with the libsodium PECL
 * 0.2.0, updated to work with PHP 7.1+ and integrated libsodium
+* 0.2.1, add default logo, update dependencies
 
 ## Credits
 
